@@ -1,0 +1,207 @@
+/* public/style.css (Tam Hali - Aşama 12) */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #121212;
+    color: #e0e0e0;
+    margin: 0;
+    padding: 20px;
+    overflow-x: hidden; /* Yatay kaydırmayı engelle */
+}
+h1, h2, h3 {
+    border-bottom: 2px solid #444;
+    padding-bottom: 5px;
+    color: #00bcd4; /* Cyan */
+}
+h3 {
+    font-size: 1.1em;
+    border-bottom: 1px dashed #444;
+}
+
+.container {
+    display: flex;
+    flex-wrap: wrap; /* Küçük ekranlar için */
+    gap: 20px;
+}
+
+/* Sol Sütun (Yönetim) */
+.management-column {
+    flex: 1;
+    min-width: 300px; /* Sıkışmayı engelle */
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* YENİ: 'Yeni Bot Ekle' Butonu */
+.btn-add-new {
+    background-color: #00bcd4;
+    color: #121212;
+    border: none;
+    padding: 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.btn-add-new:hover {
+    background-color: #4dd0e1;
+}
+
+/* Bot Listesi */
+#bot-list-container {
+    flex: 1;
+}
+
+/* YENİ: Sağ Sütun (Loglar + Konsol) */
+.log-and-console-column {
+    flex: 1.5;
+    min-width: 400px;
+    display: flex;
+    flex-direction: column;
+    /* Yüksekliği 85vh yapıp, log ve konsolun bu alanı paylaşmasını sağlıyoruz */
+    height: 85vh; 
+    background-color: #1e1e1e;
+    border-radius: 8px;
+    border: 1px solid #333;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3); /* Soft gölge */
+}
+
+/* Log Konteyneri (Güncellendi) */
+#log-container {
+    flex: 1; /* Alabildiği kadar büyüsün */
+    overflow-y: auto;
+    border-bottom: 2px solid #333; /* Konsoldan ayır */
+}
+#logs {
+    padding: 15px;
+    margin: 0;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* YENİ: Genel Komut Konsolu */
+#global-command-console {
+    flex-shrink: 0; /* Küçülmesin */
+    padding: 15px;
+}
+#global-command-console h3 {
+    margin-top: 0;
+    padding-bottom: 10px;
+}
+#global-command-console .console-grid {
+    display: flex;
+    gap: 10px;
+}
+#global-command-console select {
+    flex: 0.5; /* Seçici daha küçük olsun */
+}
+#global-command-console input {
+    flex: 1; /* Giriş kutusu büyüsün */
+}
+
+/* --- YENİ: Modal (Popup) Stilleri --- */
+#modal-overlay {
+    display: none; /* Varsayılan olarak gizli */
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); /* Arka planı karart */
+    backdrop-filter: blur(2px); /* Soft görünüm */
+}
+#modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #1e1e1e;
+    padding: 30px;
+    padding-top: 20px;
+    border: 1px solid #555;
+    border-radius: 10px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5); /* "Soft" gölge */
+    width: 90%;
+    max-width: 700px; /* Maksimum genişlik */
+    max-height: 90vh; /* Maksimum yükseklik */
+    overflow-y: auto; /* Form uzunsa kaydır */
+}
+#modal-close-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: #aaa;
+    font-size: 2em;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    background: none;
+}
+#modal-close-button:hover {
+    color: #fff;
+}
+
+/* --- Form Stilleri (Modal içinde) --- */
+#add-bot-form .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+#add-bot-form .form-group { display: flex; flex-direction: column; }
+#add-bot-form .form-group-checkbox { flex-direction: row; align-items: center; gap: 5px; }
+#add-bot-form label { margin-bottom: 5px; font-size: 0.9em; color: #aaa; }
+#add-bot-form input[type="text"],
+#add-bot-form input[type="number"],
+#add-bot-form select {
+    background-color: #333;
+    border: 1px solid #555;
+    color: #e0e0e0;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 1em;
+}
+#add-bot-form button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-right: 10px;
+}
+#save-bot-button { background-color: #4CAF50; color: white; }
+#clear-form-button { background-color: #555; color: white; }
+
+/* --- Bot Kartı (Değişiklik yok, ama stil tutarlılığı için burada) --- */
+.bot-card {
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid #333;
+}
+.bot-card-info h3 { margin: 0 0 5px 0; border: none; }
+.bot-card-info p { margin: 0; font-size: 0.9em; color: #aaa; }
+.bot-card-info .status-running { color: #4CAF50; }
+.bot-card-info .status-stopped { color: #F44336; }
+.bot-card-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.bot-card-actions button { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+.btn-start { background-color: #4CAF50; color: white; }
+.btn-stop { background-color: #F44336; color: white; }
+.btn-start:disabled, .btn-stop:disabled { background-color: #555; cursor: not-allowed; }
+.btn-delete { background-color: #b71c1c; color: white; }
+.btn-edit { background-color: #ffa000; color: #121212; }
+.stats { font-size: 0.95em; color: #ccc; margin-top: 10px; margin-bottom: 5px; }
+.stats-pos { font-size: 0.8em; color: #888; font-family: monospace; margin: 0; }
+/* DİKKAT: .bot-command-bar stilini sildik, çünkü artık genel konsolu kullanacağız */
+.btn-send-cmd { background-color: #00bcd4; color: #121212; }
+
+/* Log Renkleri */
+.log-log { color: #e0e0e0; }
+.log-status { color: #00bcd4; }
+.log-warn { color: #ffeb3b; }
+.log-error { color: #f44336; }

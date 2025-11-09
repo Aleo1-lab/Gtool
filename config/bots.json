@@ -1,0 +1,75 @@
+[
+  {
+    "name": "TestBot_1",
+    "host": "aldede13.aternos.me",
+    "port": 49843,
+    "username": "TestBot_1",
+    "auth": "offline",
+    "version": "1.20.1",
+    "behavior": "idle",
+    "params": {},
+    "autoReconnect": true,
+    "reconnectDelay": 30,
+    "automation": {
+      "autoEat": true,
+      "foodToEat": [
+        "cooked_beef",
+        "bread",
+        "cooked_chicken"
+      ]
+    }
+  },
+  {
+    "name": "AFK_Bot",
+    "host": "aldede13.aternos.me",
+    "port": 49843,
+    "username": "AFK_Bot",
+    "auth": "offline",
+    "version": "1.20.1",
+    "behavior": "afk",
+    "params": {
+      "command": "/afk",
+      "jumpInterval": 10000
+    },
+    "autoReconnect": true,
+    "reconnectDelay": 30,
+    "automation": {
+      "autoEat": false,
+      "foodToEat": []
+    }
+  },
+  {
+    "name": "TestBot_2",
+    "username": "TestBot_2",
+    "host": "aldede13.aternos.me",
+    "port": 49843,
+    "version": "1.20.1",
+    "auth": "offline",
+    "behavior": "idle",
+    "autoReconnect": true,
+    "reconnectDelay": 30,
+    "params": {},
+    "automation": {
+      "autoEat": false,
+      "foodToEat": []
+    },
+    "proxy": null
+  },
+  {
+    "name": "Chilai_alenka",
+    "username": "Chilai_alenka",
+    "host": "oyna.chickennw.com",
+    "port": 25565,
+    "version": "1.20.1",
+    "auth": "offline",
+    "behavior": "afk",
+    "autoReconnect": true,
+    "reconnectDelay": 30,
+    "params": {},
+    "automation": {
+      "autoEat": false,
+      "foodToEat": []
+    },
+    "proxy": null
+  }
+]

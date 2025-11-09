@@ -1,0 +1,8 @@
+{
+    "cliPort": 8090,
+    "staggerDelay": 2000,
+    "restart": {
+        "maxRetries": 5,
+        "baseDelay": 5000
+    }
+}
