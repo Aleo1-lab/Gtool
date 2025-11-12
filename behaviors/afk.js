@@ -1,10 +1,10 @@
 // behaviors/afk.js
 module.exports = function (bot, params) {
-    bot.once('spawn', () => {
-        // Parametreleri kullanma örneği
-        const afkCommand = params.command || '/afk';
-        bot.chat(afkCommand);
-    });
+    // 'spawn' wrapper'ı kaldırıldı. Bu kod artık 'spawn'dan SONRA çalışıyor.
+    
+    // Parametreleri kullanma örneği
+    const afkCommand = params.command || '/afk';
+    bot.chat(afkCommand);
 
     // Bot durduğu yerde rasgele zıplasın
     const jumpInterval = setInterval(() => {

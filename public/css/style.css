@@ -1,0 +1,364 @@
+/* public/css/style.css (v5.0.1 - Birleştirilmiş ve Düzeltilmiş) */
+
+:root {
+    --bg-dark-1: #121212;
+    --bg-dark-2: #1e1e1e;
+    --bg-dark-3: #2a2a2a;
+    --bg-dark-4: #333;
+    --border-color-1: #444;
+    --border-color-2: #555;
+    
+    --text-light-1: #e0e0e0;
+    --text-light-2: #ccc;
+    --text-light-3: #aaa;
+    --text-dark-1: #121212;
+    
+    --color-primary: #00bcd4; /* Cyan */
+    --color-primary-hover: #4dd0e1;
+    --color-success: #4CAF50;
+    --color-danger: #F44336;
+    --color-danger-dark: #b71c1c;
+    --color-warning: #ffeb3b;
+    --color-warn-dark: #ffa000;
+    --color-info: #673ab7; /* Mor */
+    
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+    --border-radius-lg: 10px;
+    
+    --shadow-dark: 0 3px 10px rgba(0,0,0,0.3);
+    --shadow-primary: 0 0 10px rgba(0, 188, 212, 0.5);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-dark-1);
+    color: var(--text-light-1);
+    margin: 0;
+    padding: 20px;
+    overflow-x: hidden;
+}
+h1, h2, h3 {
+    border-bottom: 2px solid var(--border-color-1);
+    padding-bottom: 5px;
+    color: var(--color-primary);
+}
+h3 {
+    font-size: 1.1em;
+    border-bottom: 1px dashed var(--border-color-1);
+}
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.management-column {
+    flex: 1;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.log-and-console-column {
+    flex: 1.5;
+    min-width: 400px;
+    display: flex;
+    flex-direction: column;
+    height: 85vh; 
+    background-color: var(--bg-dark-2);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--bg-dark-4);
+    box-shadow: var(--shadow-dark);
+}
+
+/* --- Bileşenler --- */
+
+/* Butonlar */
+.btn-add-new {
+    background-color: var(--color-primary);
+    color: var(--text-dark-1);
+    border: none;
+    padding: 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.btn-add-new:hover {
+    background-color: var(--color-primary-hover);
+}
+.btn-send-cmd { 
+    background-color: var(--color-primary); 
+    color: var(--text-dark-1); 
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-weight: bold;
+    padding: 10px 15px;
+}
+.btn-show-all {
+    background-color: var(--border-color-2);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    font-size: 0.8em;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    margin-left: 15px;
+    transition: background-color 0.2s;
+}
+.btn-show-all:hover {
+    background-color: #777;
+}
+
+/* Log Paneli */
+#log-container {
+    flex: 1; 
+    overflow-y: auto;
+    border-bottom: 2px solid var(--bg-dark-4); 
+}
+#logs {
+    padding: 15px;
+    margin: 0;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+.log-log { color: var(--text-light-1); }
+.log-status { color: var(--color-primary); }
+.log-warn { color: var(--color-warning); }
+.log-error { color: var(--color-danger); }
+
+/* Global Komut Konsolu */
+#global-command-console {
+    flex-shrink: 0; 
+    padding: 15px;
+}
+#global-command-console h3 {
+    margin-top: 0;
+    padding-bottom: 10px;
+}
+#global-command-console .console-grid {
+    display: flex;
+    gap: 10px;
+}
+#global-command-console select,
+#global-command-console input {
+    background-color: var(--bg-dark-4);
+    border: 1px solid var(--border-color-2);
+    color: var(--text-light-1);
+    padding: 10px;
+    border-radius: var(--border-radius-sm);
+    font-size: 1em;
+}
+#global-command-console select { flex: 0.5; }
+#global-command-console input { flex: 1; }
+
+/* Modallar */
+.modal-overlay-class {
+    display: none; 
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); 
+    backdrop-filter: blur(2px); 
+}
+.modal-content-class {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--bg-dark-2);
+    padding: 30px;
+    padding-top: 20px;
+    border: 1px solid var(--border-color-2);
+    border-radius: var(--border-radius-lg);
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5); 
+    max-height: 90vh; 
+    overflow-y: auto; 
+}
+.modal-close-button-class {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: var(--text-light-3);
+    font-size: 2em;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    background: none;
+}
+.modal-close-button-class:hover {
+    color: white;
+}
+#modal-content {
+    width: 90%;
+    max-width: 700px; 
+}
+#add-bot-form .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+#add-bot-form .form-group { display: flex; flex-direction: column; }
+#add-bot-form .form-group-checkbox { flex-direction: row; align-items: center; gap: 5px; }
+#add-bot-form label { margin-bottom: 5px; font-size: 0.9em; color: var(--text-light-3); }
+#add-bot-form button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-weight: bold;
+    margin-right: 10px;
+}
+#save-bot-button { background-color: var(--color-success); color: white; }
+#clear-form-button { background-color: var(--border-color-2); color: white; }
+
+/* Bot Kartı */
+.bot-card {
+    background-color: var(--bg-dark-3);
+    border-radius: var(--border-radius-md);
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--bg-dark-4);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+}
+.bot-card:hover { border-color: var(--border-color-1); }
+.bot-card.selected {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-primary);
+}
+.bot-card-info h3 { margin: 0 0 5px 0; border: none; }
+.bot-card-info p { margin: 0; font-size: 0.9em; color: var(--text-light-3); }
+.bot-card-info .status-running { color: var(--color-success); } 
+.bot-card-info .status-stopped { color: var(--color-danger); } 
+.bot-card-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.bot-card-actions button { 
+    padding: 8px 12px; border: none; border-radius: var(--border-radius-sm); 
+    cursor: pointer; font-weight: bold; 
+}
+.btn-start { background-color: var(--color-success); color: white; }
+.btn-stop { background-color: var(--color-danger); color: white; }
+.btn-start:disabled, .btn-stop:disabled { background-color: var(--border-color-2); cursor: not-allowed; }
+.btn-delete { background-color: var(--color-danger-dark); color: white; }
+.btn-edit { background-color: var(--color-warn-dark); color: var(--text-dark-1); }
+.btn-inventory { background-color: var(--color-info); color: white; }
+
+/* Stats & Radar */
+.stats { font-size: 0.95em; color: var(--text-light-2); margin-top: 10px; margin-bottom: 5px; }
+.stats-pos { font-size: 0.8em; color: #888; font-family: monospace; margin: 0; }
+.stats-radar-title {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: var(--color-primary);
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+.radar-list {
+    list-style-type: none;
+    padding-left: 10px;
+    margin: 5px 0;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+.radar-list li { padding: 2px 0; color: var(--text-light-2); }
+.radar-player { color: var(--color-success); font-weight: bold; }
+.radar-mob { color: var(--color-danger); }
+.radar-object { color: #888; }
+
+/* Envanter Modalı */
+#inventory-modal-content {
+    width: 400px; 
+}
+#inventory-grid-container {
+    display: grid;
+    gap: 4px;
+    margin-top: 15px;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-areas:
+        "helmet offhand . . . . . . ."
+        "chest  .      . . . . . . ."
+        "legs   .      . . . . . . ."
+        "boots  .      . . . . . . ."
+        ".      .      . . . . . . ."
+        "i0     i1     i2 i3 i4 i5 i6 i7 i8"
+        "i9     i10    i11 i12 i13 i14 i15 i16 i17"
+        "i18    i19    i20 i21 i22 i23 i24 i25 i26"
+        "h0     h1     h2 h3 h4 h5 h6 h7 h8";
+}
+.inventory-slot {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background-color: var(--bg-dark-4);
+    border: 1px solid var(--border-color-2);
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8em;
+    color: var(--text-light-3);
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    padding: 2px;
+    box-sizing: border-box;
+    grid-area: var(--slot-name);
+}
+.inventory-slot .item-count {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 1px #000;
+}
+.inventory-slot[data-slot-name="helmet"] { --slot-name: helmet; }
+.inventory-slot[data-slot-name="chest"] { --slot-name: chest; }
+.inventory-slot[data-slot-name="legs"] { --slot-name: legs; }
+.inventory-slot[data-slot-name="boots"] { --slot-name: boots; }
+.inventory-slot[data-slot-name="offhand"] { --slot-name: offhand; }
+.inventory-slot[data-slot-name="i0"] { --slot-name: i0; }
+.inventory-slot[data-slot-name="i1"] { --slot-name: i1; }
+.inventory-slot[data-slot-name="i2"] { --slot-name: i2; }
+.inventory-slot[data-slot-name="i3"] { --slot-name: i3; }
+.inventory-slot[data-slot-name="i4"] { --slot-name: i4; }
+.inventory-slot[data-slot-name="i5"] { --slot-name: i5; }
+.inventory-slot[data-slot-name="i6"] { --slot-name: i6; }
+.inventory-slot[data-slot-name="i7"] { --slot-name: i7; }
+.inventory-slot[data-slot-name="i8"] { --slot-name: i8; }
+.inventory-slot[data-slot-name="i9"] { --slot-name: i9; }
+.inventory-slot[data-slot-name="i10"] { --slot-name: i10; }
+.inventory-slot[data-slot-name="i11"] { --slot-name: i11; }
+.inventory-slot[data-slot-name="i12"] { --slot-name: i12; }
+.inventory-slot[data-slot-name="i13"] { --slot-name: i13; }
+.inventory-slot[data-slot-name="i14"] { --slot-name: i14; }
+.inventory-slot[data-slot-name="i15"] { --slot-name: i15; }
+.inventory-slot[data-slot-name="i16"] { --slot-name: i16; }
+.inventory-slot[data-slot-name="i17"] { --slot-name: i17; }
+.inventory-slot[data-slot-name="i18"] { --slot-name: i18; }
+.inventory-slot[data-slot-name="i19"] { --slot-name: i19; }
+.inventory-slot[data-slot-name="i20"] { --slot-name: i20; }
+.inventory-slot[data-slot-name="i21"] { --slot-name: i21; }
+.inventory-slot[data-slot-name="i22"] { --slot-name: i22; }
+.inventory-slot[data-slot-name="i23"] { --slot-name: i23; }
+.inventory-slot[data-slot-name="i24"] { --slot-name: i24; }
+.inventory-slot[data-slot-name="i25"] { --slot-name: i25; }
+.inventory-slot[data-slot-name="i26"] { --slot-name: i26; }
+.inventory-slot[data-slot-name="h0"] { --slot-name: h0; }
+.inventory-slot[data-slot-name="h1"] { --slot-name: h1; }
+.inventory-slot[data-slot-name="h2"] { --slot-name: h2; }
+.inventory-slot[data-slot-name="h3"] { --slot-name: h3; }
+.inventory-slot[data-slot-name="h4"] { --slot-name: h4; }
+.inventory-slot[data-slot-name="h5"] { --slot-name: h5; }
+.inventory-slot[data-slot-name="h6"] { --slot-name: h6; }
+.inventory-slot[data-slot-name="h7"] { --slot-name: h7; }
+.inventory-slot[data-slot-name="h8"] { --slot-name: h8; }

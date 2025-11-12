@@ -1,23 +1,20 @@
 [
   {
     "name": "TestBot_1",
-    "host": "aldede13.aternos.me",
-    "port": 49843,
     "username": "TestBot_1",
-    "auth": "offline",
+    "host": "aleosinsi.aternos.me",
+    "port": 49703,
     "version": "1.20.1",
+    "auth": "offline",
     "behavior": "idle",
-    "params": {},
     "autoReconnect": true,
     "reconnectDelay": 30,
+    "params": {},
     "automation": {
-      "autoEat": true,
-      "foodToEat": [
-        "cooked_beef",
-        "bread",
-        "cooked_chicken"
-      ]
-    }
+      "autoEat": false,
+      "foodToEat": []
+    },
+    "proxy": null
   },
   {
     "name": "AFK_Bot",

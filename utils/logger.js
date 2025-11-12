@@ -1,26 +1,11 @@
-// utils/logger.js
+// logger.js (Sadeleştirilmiş)
 const chalk = require('chalk');
 
-// Renkleri önceden tanımlayalım
-const timeColor = chalk.gray;
-const prefixColor = chalk.cyan;
-const errorColor = chalk.red;
-const warnColor = chalk.yellow;
-
-function print(prefix, message, colorizer = (msg) => msg) {
-    const time = new Date().toISOString();
-    const formattedPrefix = prefixColor(`[${prefix.padEnd(15, ' ')}]`); // Sabit genişlik için
-    console.log(`${timeColor(`[${time}]`)} ${formattedPrefix} ${colorizer(message)}`);
+function print(prefix, message, color = chalk.white) {
+    const time = new Date().toLocaleTimeString(); // ISO yerine sade saat
+    console.log(`${chalk.gray(time)} ${chalk.cyan(prefix.padEnd(15))} ${color(message)}`);
 }
 
-exports.log = (prefix, message) => {
-    print(prefix, message);
-};
-
-exports.error = (prefix, message) => {
-    print(prefix, message, errorColor);
-};
-
-exports.warn = (prefix, message) => {
-    print(prefix, message, warnColor);
-};
+exports.log = (p, m) => print(p, m);
+exports.error = (p, m) => print(p, m, chalk.red);
+exports.warn = (p, m) => print(p, m, chalk.yellow);

@@ -3,9 +3,16 @@
 const yargs = require('yargs/yargs');
 const { hideBin } = require('yargs/helpers');
 const axios = require('axios');
-const chalk = require('chalk'); // Renkli çıktı için (zaten kurulu chalk@4)
+const chalk = require('chalk'); 
+const http = require('http'); // GÜNCELLENDİ
+const https = require('https'); // YENİ
 
 const API_BASE_URL = 'http://localhost:4000';
+
+// GÜNCELLENDİ: Aşama 2 - Senin önerin (Persistent HTTP/S Connection)
+axios.defaults.httpAgent = new http.Agent({ keepAlive: true });
+axios.defaults.httpsAgent = new https.Agent({ keepAlive: true });
+
 
 // Hata yönetimini merkezileştiren yardımcı fonksiyon
 async function handleRequest(requestPromise) {
@@ -15,7 +22,7 @@ async function handleRequest(requestPromise) {
     } catch (err) {
         if (err.code === 'ECONNREFUSED') {
             console.error(chalk.red.bold('HATA: Controller API\'sine bağlanılamadı.'));
-            console.error(chalk.yellow('`node controller.js` komutunun çalıştığından emin olun.'));
+            console.error(chalk.yellow('`npm start` veya `node controller.js` komutunun çalıştığından emin olun.'));
         } else if (err.response) {
             // API'den gelen hata (404, 400, 500 vb.)
             console.error(chalk.red.bold(`API Hatası (${err.response.status}):`), chalk.white(err.response.data.error));
@@ -79,10 +86,9 @@ yargs(hideBin(process.argv))
         }
     )
     .command(
-        'send <botName> <command> [args...]', // Bu satır [args...] sayesinde zaten diziyi toplar
+        'send <botName> <command> [args...]', 
         'Çalışan bir bota komut gönderir',
         (yargs) => {
-            // Sadece botName ve command'ı tanımlamamız yeterli
             yargs.positional('botName', {
                 describe: 'Botun adı',
                 type: 'string',
@@ -91,10 +97,8 @@ yargs(hideBin(process.argv))
                 describe: 'Gönderilecek komut (say, move, vb.)',
                 type: 'string',
             });
-            // yargs.array('args', ...) satırını buradan sildik.
         },
         async (argv) => {
-            // Artık argv.args [args...] sayesinde doğru şekilde dolacak
             const body = { command: argv.command, args: argv.args || [] };
             const data = await handleRequest(axios.post(`${API_BASE_URL}/bots/command/${argv.botName}`, body));
             if (data) {

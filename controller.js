@@ -11,19 +11,21 @@ const writeFileAtomic = require('write-file-atomic');
 const BOTS_CONFIG_PATH = path.join(__dirname, 'config', 'bots.json');
 const CONTROLLER_PREFIX = 'CONTROLLER';
 const API_PORT = 4000;
-
-const runningBots = new Map();
-let botConfigurations = new Map();
-const botStats = new Map();
 let io; 
 
-// --- bots.json'u Güvenli Kaydetme Fonksiyonu ---
+const botStore = new Map();
+
+let saveTimer = null;
+function debouncedSaveConfig() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveConfigToFile, 500); 
+}
+
 async function saveConfigToFile() {
-    controllerLog('log', 'Config dosyası kaydediliyor...');
+    controllerLog('log', 'Config dosyası kaydediliyor (debounced)...');
     try {
-        const botList = Array.from(botConfigurations.values());
+        const botList = Array.from(botStore.values()).map(botState => botState.config);
         const data = JSON.stringify(botList, null, 2); 
-        
         await writeFileAtomic(BOTS_CONFIG_PATH, data);
         controllerLog('log', 'Config dosyası başarıyla kaydedildi.');
     } catch (err) {
@@ -45,11 +47,36 @@ function controllerLog(type = 'log', message) {
 
 function handleBotMessage(botName, message) {
     const { type, payload } = message; 
+    const botState = botStore.get(botName);
+    if (!botState) return;
 
     if (type === 'stats') {
-        botStats.set(botName, payload);
-        broadcastStatusUpdate();
-        return; 
+        const oldStats = botState.stats;
+        const newStats = { ...oldStats, ...payload };
+        const deltaStats = {};
+        
+        if (oldStats.health !== newStats.health) deltaStats.health = newStats.health;
+        if (oldStats.food !== newStats.food) deltaStats.food = newStats.food;
+        if (oldStats.state !== newStats.state) deltaStats.state = newStats.state;
+        if (JSON.stringify(oldStats.pos) !== JSON.stringify(newStats.pos)) {
+            deltaStats.pos = newStats.pos;
+        }
+        if (JSON.stringify(oldStats.nearbyEntities) !== JSON.stringify(newStats.nearbyEntities)) {
+            deltaStats.nearbyEntities = newStats.nearbyEntities;
+        }
+        if (JSON.stringify(oldStats.inventory) !== JSON.stringify(newStats.inventory)) {
+            deltaStats.inventory = newStats.inventory;
+        }
+        
+        botState.stats = newStats;
+        
+        if (Object.keys(deltaStats).length > 0) {
+            io.emit('bot_delta', { 
+                name: botName, 
+                changed: { stats: deltaStats } 
+            });
+        }
+        return;
     }
 
     let loggerFunction;
@@ -59,9 +86,7 @@ function handleBotMessage(botName, message) {
         case 'warn': loggerFunction = logger.warn; break;
         case 'log': default: loggerFunction = logger.log;
     }
-
     loggerFunction(botName, payload);
-    
     if (io) {
         io.emit('log', {
             prefix: botName,
@@ -71,28 +96,11 @@ function handleBotMessage(botName, message) {
     }
 }
 
-function broadcastStatusUpdate() {
-    if (!io) return; 
-
-    const statusList = [];
-    for (const [name, config] of botConfigurations.entries()) {
-        const stats = botStats.get(name) || {};
-        statusList.push({
-            name: name,
-            status: runningBots.has(name) ? 'running' : 'stopped',
-            behavior: config.behavior,
-            stats: stats,
-            // 'Edit' butonu için config'in tamamını gönderiyoruz
-            config: config 
-        });
-    }
-    io.emit('status_update', statusList);
-}
-
 
 function startBot(botConfig) {
     const botName = botConfig.name;
-    if (runningBots.has(botName)) {
+    const botState = botStore.get(botName);
+    if (botState.process) {
         controllerLog('warn', `Bot ${botName} is already running.`);
         return false;
     }
@@ -101,31 +109,47 @@ function startBot(botConfig) {
     const botProcess = fork(path.join(__dirname, 'bot.js'));
 
     botProcess.on('exit', (code) => {
-        const botExitedMessage = `Process exited with code ${code}.`;
-        logger.warn(botName, botExitedMessage);
-        if (io) io.emit('log', { prefix: botName, message: botExitedMessage, type: 'warn' });
-        
-        runningBots.delete(botName);
-        botStats.delete(botName);
-        broadcastStatusUpdate(); 
+        const botStateOnExit = botStore.get(botName); 
+        if (!botStateOnExit) return; 
 
-        const currentConfig = botConfigurations.get(botName);
+        const botExitedMessage = `Process exited with code ${code}.`;
         
+        const oldStatus = botStateOnExit.status;
+        botStateOnExit.process = null;
+        botStateOnExit.status = 'stopped';
+        const currentConfig = botStateOnExit.config;
+        
+        if (oldStatus === 'running') {
+            botStateOnExit.stats = { inventory: [] }; 
+            io.emit('bot_delta', { 
+                name: botName, 
+                changed: { status: 'stopped', stats: { inventory: [] } } 
+            });
+        }
+
         if (code !== 0 && currentConfig && currentConfig.autoReconnect === true) {
+            logger.warn(botName, botExitedMessage + " (Unexpected stop/crash)");
             const delayInSeconds = currentConfig.reconnectDelay || 30;
             controllerLog('log', `Bot ${botName} will try to reconnect in ${delayInSeconds} seconds...`);
-
             setTimeout(() => {
-                if (botConfigurations.has(botName)) {
+                if (botStore.has(botName)) {
                      controllerLog('log', `Attempting to restart bot: ${botName}...`);
                     startBot(currentConfig); 
                 }
             }, delayInSeconds * 1000);
             
-        } else if (code === 0) {
-            controllerLog('log', `Bot ${botName} stopped intentionally.`);
+        } else if (botStateOnExit.markedForDeletion) {
+            logger.log(botName, `Process stopped and marked for deletion. Removing from store.`);
+            botStore.delete(botName);
+            io.emit('bot_removed', { name: botName });
+            debouncedSaveConfig();
+            
         } else {
-            controllerLog('warn', `Bot ${botName} will not reconnect.`);
+            if (code === 0) {
+                logger.log(botName, botExitedMessage + " (Planned stop)");
+            } else {
+                logger.warn(botName, botExitedMessage + " (Crashed, autoReconnect is off)");
+            }
         }
     });
 
@@ -134,20 +158,20 @@ function startBot(botConfig) {
     });
 
     botProcess.send({ type: 'init', config: botConfig });
-    runningBots.set(botName, botProcess);
-    
-    broadcastStatusUpdate();
+    botState.process = botProcess;
+    botState.status = 'running';
+    io.emit('bot_delta', { name: botName, changed: { status: 'running' } });
     return true;
 }
 
 function sendCommandToBot(botName, command, args = []) {
-    const botProcess = runningBots.get(botName);
-    if (botProcess) {
+    const botState = botStore.get(botName);
+    if (botState && botState.process) {
         controllerLog('log', `Sending command '${command}' to ${botName}`);
-        botProcess.send({ type: 'command', command, args });
+        botState.process.send({ type: 'command', command, args });
         return true;
     } else {
-        controllerLog('error', `Bot ${botName} is not running.`);
+        controllerLog('warn', `Bot ${botName} is not running or not in store (may be pending deletion).`);
         return false;
     }
 }
@@ -157,43 +181,51 @@ function startAPIServer() {
     const server = http.createServer(app);
     io = new Server(server); 
 
+    // GÜNCELLENDİ: v5.0.1 - MIME Hatası Düzeltmesi
+    // 'public' klasörünü kök olarak sun
     app.use(express.static(path.join(__dirname, 'public')));
+    
+    // '/css' ve '/js' yollarını *açıkça* 'public/css' ve 'public/js' klasörlerine yönlendir.
+    // Bu, 'MIME type' hatasını çözecektir.
+    app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
+    app.use('/js', express.static(path.join(__dirname, 'public', 'js')));
+
     app.use(express.json());
 
-    // --- 'cli.js' için API endpoint'leri (DOLDURULDU) ---
+    // API Endpointleri (botStore kullanıyor)
     app.get('/bots/status', (req, res) => {
-        const statusList = [];
-        for (const [name, config] of botConfigurations.entries()) {
-            statusList.push({
-                name: name,
-                status: runningBots.has(name) ? 'running' : 'stopped',
-                behavior: config.behavior
-            });
-        }
+        const statusList = Array.from(botStore.values()).map(botState => ({
+            name: botState.config.name,
+            status: botState.status,
+            behavior: botState.config.behavior
+        }));
         res.json(statusList);
     });
+
     app.post('/bots/start/:botName', (req, res) => {
         const { botName } = req.params;
-        const botConfig = botConfigurations.get(botName);
-        if (!botConfig) {
+        const botState = botStore.get(botName);
+        if (!botState) {
             return res.status(404).json({ error: `Bot '${botName}' not found in config.` });
         }
-        if (runningBots.has(botName)) {
+        if (botState.process) {
             return res.status(400).json({ error: `Bot '${botName}' is already running.` });
         }
-        if (startBot(botConfig)) {
+        if (startBot(botState.config)) {
             res.json({ success: true, message: `Bot '${botName}' started.` });
         } else {
             res.status(500).json({ error: `Failed to start bot '${botName}'.` });
         }
     });
+
     app.post('/bots/command/:botName', (req, res) => {
         const { botName } = req.params;
         const { command, args } = req.body; 
         if (!command) {
             return res.status(400).json({ error: 'Missing "command" in request body.' });
         }
-        if (!runningBots.has(botName)) {
+        const botState = botStore.get(botName);
+        if (!botState || !botState.process) {
             return res.status(404).json({ error: `Bot '${botName}' is not running.` });
         }
         if (sendCommandToBot(botName, command, args || [])) {
@@ -204,99 +236,104 @@ function startAPIServer() {
     });
 
 
-    // --- Socket.io Dinleyicileri (GÜNCELLENDİ) ---
+    // Socket.io Dinleyicileri (v3.0 Delta Sync)
     io.on('connection', (socket) => {
         controllerLog('log', 'Web Arayüzü bağlandı.');
-        broadcastStatusUpdate();
+        
+        const fullState = Array.from(botStore.entries()).map(([name, botState]) => ({
+            name: name,
+            config: botState.config,
+            status: botState.status,
+            stats: botState.stats
+        }));
+        socket.emit('full_state', fullState); 
 
-        // Start
         socket.on('command_start', (botName) => {
             controllerLog('log', `Web'den 'start' komutu: ${botName}`);
-            const botConfig = botConfigurations.get(botName);
-            if (botConfig) {
-                startBot(botConfig);
-            } else {
-                controllerLog('error', `Geçersiz bot adı: ${botName}`);
-            }
+            const botState = botStore.get(botName);
+            if (botState) startBot(botState.config);
+            else controllerLog('error', `Geçersiz bot adı: ${botName}`);
         });
 
-        // Stop
         socket.on('command_stop', (botName) => {
             controllerLog('log', `Web'den 'stop' komutu: ${botName}`);
             sendCommandToBot(botName, 'stop');
         });
 
-        // --- DEĞİŞİKLİK BURADA: 'command_send' DEĞİŞTİ ---
-        // Artık 'command_send' yok, 'command_send_global' var.
         socket.on('command_send_global', (data) => {
-            // data = { target: '*' | 'BotName', fullCommand: 'say hello' }
             const { target, fullCommand } = data;
-            
-            if (!target || !fullCommand) {
-                controllerLog('warn', 'Invalid command_send_global received.');
-                return;
-            }
-
-            // Komut satırını ayır
+            if (!target || !fullCommand) return;
             const parts = fullCommand.trim().split(' ');
             const command = parts.shift();
             const args = parts;
-
             if (target === '*') {
-                // Hedef: Tüm *çalışan* botlar
                 controllerLog('log', `GLOBAL KOMUT -> [TÜM BOTLAR]: ${command} [${args.join(', ')}]`);
-                for (const botName of runningBots.keys()) {
-                    sendCommandToBot(botName, command, args);
+                for (const [botName, botState] of botStore.entries()) {
+                    if (botState.process) sendCommandToBot(botName, command, args);
                 }
             } else {
-                // Hedef: Tek bot
                 controllerLog('log', `GLOBAL KOMUT -> [${target}]: ${command} [${args.join(', ')}]`);
-                if (runningBots.has(target)) {
-                    sendCommandToBot(target, command, args);
-                } else {
-                    controllerLog('error', `Komut gönderilemedi: Bot ${target} çalışmıyor.`);
-                }
+                if (botStore.get(target)?.process) sendCommandToBot(target, command, args);
+                else controllerLog('error', `Komut gönderilemedi: Bot ${target} çalışmıyor.`);
             }
         });
-        // --- DEĞİŞİKLİK BİTTİ ---
         
-        // Bot Ekle/Güncelle
         socket.on('config_add_bot', async (botData) => {
             if (!botData || !botData.name) {
                 controllerLog('error', 'Geçersiz bot config verisi alındı.');
                 return;
             }
-            controllerLog('log', `Web'den 'Bot Ekle/Güncelle' komutu: ${botData.name}`);
-            botConfigurations.set(botData.name, botData);
-            await saveConfigToFile();
-            broadcastStatusUpdate();
+            const botName = botData.name;
+            controllerLog('log', `Web'den 'Bot Ekle/Güncelle' komutu: ${botName}`);
+            
+            const isNewBot = !botStore.has(botName);
+            const existingState = botStore.get(botName) || {
+                process: null,
+                stats: { inventory: [] }, 
+                status: 'stopped'
+            };
+            
+            botStore.set(botName, { ...existingState, config: botData });
+            debouncedSaveConfig();
+            
+            if (isNewBot) {
+                io.emit('bot_added', {
+                    name: botName,
+                    config: botData,
+                    status: 'stopped',
+                    stats: { inventory: [] } 
+                });
+            } else {
+                io.emit('bot_delta', {
+                    name: botName,
+                    changed: { config: botData }
+                });
+            }
         });
 
-        // Bot Sil
         socket.on('config_delete_bot', async (botName) => {
             controllerLog('log', `Web'den 'Bot Sil' komutu: ${botName}`);
             
-            if (botConfigurations.has(botName)) {
-                botConfigurations.delete(botName);
-                await saveConfigToFile();
-                
-                if (runningBots.has(botName)) {
-                    controllerLog('warn', `Çalışan bot ${botName} config'den silindi, durduruluyor...`);
-                    sendCommandToBot(botName, 'stop');
+            if (botStore.has(botName)) {
+                const botState = botStore.get(botName);
+                if (botState.process) {
+                    botState.markedForDeletion = true;
+                    sendCommandToBot(botName, 'stop'); 
+                    controllerLog('warn', `Çalışan bot ${botName} silinmek için işaretlendi, durduruluyor...`);
+                } else {
+                    controllerLog('log', `Duran bot ${botName} store'dan siliniyor.`);
+                    botStore.delete(botName);
+                    io.emit('bot_removed', { name: botName });
+                    debouncedSaveConfig();
                 }
-                
-                broadcastStatusUpdate();
             } else {
                  controllerLog('error', `Silinmek istenen bot config'de bulunamadı: ${botName}`);
             }
         });
         
-        // Bot Düzenleme (Formu Doldur)
         socket.on('config_get_bot', (botName) => {
-            const botConfig = botConfigurations.get(botName);
-            if (botConfig) {
-                socket.emit('config_show_bot', botConfig);
-            }
+            const botState = botStore.get(botName);
+            if (botState) socket.emit('config_show_bot', botState.config);
         });
 
         socket.on('disconnect', () => {
@@ -309,11 +346,10 @@ function startAPIServer() {
     });
 }
 
-// --- Ana Fonksiyon (Değişiklik yok) ---
+// Ana Fonksiyon
 function main() {
     logger.log(CONTROLLER_PREFIX, 'MineBot Controller starting...');
     
-    // 1. Başlangıçta config'i oku
     try {
         if (!fs.existsSync(BOTS_CONFIG_PATH)) {
             fs.writeFileSync(BOTS_CONFIG_PATH, '[]', 'utf8');
@@ -324,15 +360,19 @@ function main() {
         const bots = JSON.parse(configFile);
         
         for (const botConfig of bots) {
-            botConfigurations.set(botConfig.name, botConfig);
+            botStore.set(botConfig.name, {
+                config: botConfig,
+                process: null,
+                stats: { inventory: [] }, 
+                status: 'stopped'
+            });
         }
-        logger.log(CONTROLLER_PREFIX, `Loaded ${botConfigurations.size} bot configurations.`);
+        logger.log(CONTROLLER_PREFIX, `Loaded ${botStore.size} bot configurations.`);
     } catch (err) {
         logger.error(CONTROLLER_PREFIX, `Config okunamadı: ${err.message}`);
         return;
     }
 
-    // 2. API ve Web Sunucusunu Başlat
     startAPIServer();
 }
 
