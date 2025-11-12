@@ -362,3 +362,697 @@ h3 {
 .inventory-slot[data-slot-name="h6"] { --slot-name: h6; }
 .inventory-slot[data-slot-name="h7"] { --slot-name: h7; }
 .inventory-slot[data-slot-name="h8"] { --slot-name: h8; }
+
+/* public/css/style.css (v5.0) */
+:root {
+    --bg-dark-1: #121212;
+    --bg-dark-2: #1e1e1e;
+    --bg-dark-3: #2a2a2a;
+    --text-light: #e0e0e0;
+    --text-dark: #aaaaaa;
+    --border-color: #333;
+    --accent-cyan: #00bcd4;
+    --accent-green: #4CAF50;
+    --accent-red: #F44336;
+    --accent-yellow: #ffeb3b;
+    --accent-orange: #ffa000;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-dark-1);
+    color: var(--text-light);
+    margin: 0;
+    padding: 20px;
+    overflow-x: hidden;
+}
+
+h1, h2, h3 {
+    border-bottom: 2px solid #444;
+    padding-bottom: 5px;
+    color: var(--accent-cyan);
+}
+h3 {
+    font-size: 1.1em;
+    border-bottom: 1px dashed #444;
+    margin-top: 0;
+}
+
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+/* --- Sütunlar --- */
+.management-column {
+    flex: 1;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.log-and-console-column {
+    flex: 1.5;
+    min-width: 400px;
+    display: flex;
+    flex-direction: column;
+    height: 85vh; 
+    background-color: var(--bg-dark-2);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
+
+/* --- Bot Ekle Butonu --- */
+.btn-add-new {
+    background-color: var(--accent-cyan);
+    color: var(--bg-dark-1);
+    border: none;
+    padding: 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.btn-add-new:hover { background-color: #4dd0e1; }
+
+/* --- Bot Kartı --- */
+#bot-list-container { flex: 1; }
+.bot-card {
+    background-color: var(--bg-dark-3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.bot-card:hover {
+    border-color: #555;
+    background-color: #333;
+}
+.bot-card.selected {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 10px rgba(0, 188, 212, 0.3);
+}
+.bot-card-info h3 { margin: 0 0 5px 0; border: none; }
+.bot-card-info p { margin: 0; font-size: 0.9em; color: var(--text-dark); }
+.status-running { color: var(--accent-green); }
+.status-stopped { color: var(--accent-red); }
+
+.bot-card-actions { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 5px; 
+    margin-top: 10px; 
+}
+.bot-card-actions button { 
+    padding: 8px 12px; 
+    border: none; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    font-size: 0.9em;
+}
+.btn-start { background-color: var(--accent-green); color: white; }
+.btn-stop { background-color: var(--accent-red); color: white; }
+.btn-start:disabled, .btn-stop:disabled, .btn-delete:disabled, .btn-inventory:disabled { 
+    background-color: #555; 
+    cursor: not-allowed; 
+}
+.btn-delete { background-color: #b71c1c; color: white; }
+.btn-edit { background-color: var(--accent-orange); color: var(--bg-dark-1); }
+.btn-inventory { background-color: #0288d1; color: white; }
+
+/* --- Bot İstatistikleri & Radar --- */
+.stats { 
+    font-size: 0.95em; 
+    color: #ccc; 
+    margin-top: 10px; 
+    margin-bottom: 5px; 
+}
+.stats-pos { 
+    font-size: 0.8em; 
+    color: #888; 
+    font-family: monospace; 
+    margin: 0; 
+}
+.stats-radar-title {
+    font-size: 0.85em;
+    color: var(--accent-cyan);
+    margin-top: 8px;
+    margin-bottom: 4px;
+    font-weight: bold;
+}
+.radar-list {
+    font-family: monospace;
+    font-size: 0.8em;
+    margin: 0;
+    padding-left: 15px;
+    color: var(--text-dark);
+}
+.radar-player { color: var(--accent-red); font-weight: bold; }
+.radar-mob { color: var(--accent-orange); }
+.radar-object { color: #ccc; }
+
+/* --- Log Konteyneri --- */
+#log-container {
+    flex: 1;
+    overflow-y: auto;
+    border-bottom: 2px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+.log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-right: 15px;
+    padding-left: 15px;
+}
+.log-header h2 {
+    margin-bottom: 0;
+}
+.btn-show-all {
+    background: var(--accent-orange);
+    color: var(--bg-dark-1);
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 0.8em;
+    font-weight: bold;
+    cursor: pointer;
+}
+#logs {
+    padding: 15px;
+    margin: 0;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    flex: 1;
+}
+/* Log Renkleri */
+.log-log { color: var(--text-light); }
+.log-status { color: var(--accent-cyan); }
+.log-warn { color: var(--accent-yellow); }
+.log-error { color: var(--accent-red); }
+
+/* --- Genel Komut Konsolu --- */
+#global-command-console {
+    flex-shrink: 0;
+    padding: 15px;
+}
+#global-command-console .console-grid {
+    display: flex;
+    gap: 10px;
+}
+#global-command-console select { flex: 0.5; }
+#global-command-console input { flex: 1; }
+
+/* --- Modal (Popup) Stilleri --- */
+#modal-overlay, #inventory-modal-overlay {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(2px);
+}
+#modal-content, #inventory-modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--bg-dark-2);
+    padding: 30px;
+    padding-top: 20px;
+    border: 1px solid #555;
+    border-radius: 10px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+#modal-close-button, #inventory-modal-close-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: var(--text-dark);
+    font-size: 2em;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    background: none;
+}
+#modal-close-button:hover, #inventory-modal-close-button:hover { color: #fff; }
+
+/* --- Form Stilleri --- */
+#add-bot-form .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+#add-bot-form .form-group { display: flex; flex-direction: column; }
+#add-bot-form .form-group-checkbox { flex-direction: row; align-items: center; gap: 5px; }
+#add-bot-form label { margin-bottom: 5px; font-size: 0.9em; color: var(--text-dark); }
+input[type="text"], input[type="number"], select {
+    background-color: #333;
+    border: 1px solid #555;
+    color: var(--text-light);
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 1em;
+}
+#add-bot-form button, .btn-send-cmd {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-right: 10px;
+}
+#save-bot-button { background-color: var(--accent-green); color: white; }
+#clear-form-button { background-color: #555; color: white; }
+.btn-send-cmd { background-color: var(--accent-cyan); color: var(--bg-dark-1); }
+
+/* --- Envanter Grid Stilleri (v5.0) --- */
+#inventory-modal-content { max-width: 800px; }
+#inventory-grid-container {
+    display: grid;
+    /* 9 sütunlu grid (hotbar + 3 sıra envanter) */
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(5, 60px); /* 4 sıra + 1 sıra zırh/offhand */
+    gap: 4px;
+    font-family: monospace;
+    font-size: 0.8em;
+    
+    /* CSS Grid alanlarını tanımlama */
+    grid-template-areas:
+        "helmet chest legs boots . . . . offhand"
+        "i0 i1 i2 i3 i4 i5 i6 i7 i8"
+        "i9 i10 i11 i12 i13 i14 i15 i16 i17"
+        "i18 i19 i20 i21 i22 i23 i24 i25 i26"
+        "h0 h1 h2 h3 h4 h5 h6 h7 h8";
+}
+.inventory-slot {
+    background: var(--bg-dark-3);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px;
+    color: var(--text-light);
+    overflow: hidden;
+    position: relative;
+    word-break: break-word;
+}
+.inventory-slot .item-count {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 1px #111;
+}
+
+/* Alanları atama (Düzeltme #4) */
+[data-slot-name="helmet"]  { grid-area: helmet; background-color: #222; }
+[data-slot-name="chest"]   { grid-area: chest; background-color: #222; }
+[data-slot-name="legs"]    { grid-area: legs; background-color: #222; }
+[data-slot-name="boots"]   { grid-area: boots; background-color: #222; }
+[data-slot-name="offhand"] { grid-area: offhand; background-color: #222; }
+
+[data-slot-name^="h"] { background-color: #383838; } /* Hotbar */
+
+[data-slot-name="i0"] { grid-area: i0; } [data-slot-name="i1"] { grid-area: i1; } [data-slot-name="i2"] { grid-area: i2; }
+[data-slot-name="i3"] { grid-area: i3; } [data-slot-name="i4"] { grid-area: i4; } [data-slot-name="i5"] { grid-area: i5; }
+[data-slot-name="i6"] { grid-area: i6; } [data-slot-name="i7"] { grid-area: i7; } [data-slot-name="i8"] { grid-area: i8; }
+[data-slot-name="i9"] { grid-area: i9; } [data-slot-name="i10"] { grid-area: i10; } [data-slot-name="i11"] { grid-area: i11; }
+[data-slot-name="i12"] { grid-area: i12; } [data-slot-name="i13"] { grid-area: i13; } [data-slot-name="i14"] { grid-area: i14; }
+[data-slot-name="i15"] { grid-area: i15; } [data-slot-name="i16"] { grid-area: i16; } [data-slot-name="i17"] { grid-area: i17; }
+[data-slot-name="i18"] { grid-area: i18; } [data-slot-name="i19"] { grid-area: i19; } [data-slot-name="i20"] { grid-area: i20; }
+[data-slot-name="i21"] { grid-area: i21; } [data-slot-name="i22"] { grid-area: i22; } [data-slot-name="i23"] { grid-area: i23; }
+[data-slot-name="i24"] { grid-area: i24; } [data-slot-name="i25"] { grid-area: i25; } [data-slot-name="i26"] { grid-area: i26; }
+
+[data-slot-name="h0"] { grid-area: h0; } [data-slot-name="h1"] { grid-area: h1; } [data-slot-name="h2"] { grid-area: h2; }
+[data-slot-name="h3"] { grid-area: h3; } [data-slot-name="h4"] { grid-area: h4; } [data-slot-name="h5"] { grid-area: h5; }
+[data-slot-name="h6"] { grid-area: h6; } [data-slot-name="h7"] { grid-area: h7; } [data-slot-name="h8"] { grid-area: h8; }
+/* public/css/style.css (v5.1) */
+:root {
+    --bg-dark-1: #121212;
+    --bg-dark-2: #1e1e1e;
+    --bg-dark-3: #2a2a2a;
+    --text-light: #e0e0e0;
+    --text-dark: #aaaaaa;
+    --border-color: #333;
+    --accent-cyan: #00bcd4;
+    --accent-green: #4CAF50;
+    --accent-red: #F44336;
+    --accent-yellow: #ffeb3b;
+    --accent-orange: #ffa000;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-dark-1);
+    color: var(--text-light);
+    margin: 0;
+    padding: 20px;
+    overflow-x: hidden;
+}
+
+h1, h2, h3 {
+    border-bottom: 2px solid #444;
+    padding-bottom: 5px;
+    color: var(--accent-cyan);
+}
+h3 {
+    font-size: 1.1em;
+    border-bottom: 1px dashed #444;
+    margin-top: 0;
+}
+
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+/* --- Sütunlar --- */
+.management-column {
+    flex: 1;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.log-and-console-column {
+    flex: 1.5;
+    min-width: 400px;
+    display: flex;
+    flex-direction: column;
+    height: 85vh; 
+    background-color: var(--bg-dark-2);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+}
+
+/* --- Bot Ekle Butonu --- */
+.btn-add-new {
+    background-color: var(--accent-cyan);
+    color: var(--bg-dark-1);
+    border: none;
+    padding: 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.btn-add-new:hover { background-color: #4dd0e1; }
+
+/* --- Bot Kartı --- */
+#bot-list-container { flex: 1; }
+.bot-card {
+    background-color: var(--bg-dark-3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.bot-card:hover {
+    border-color: #555;
+    background-color: #333;
+}
+.bot-card.selected {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 10px rgba(0, 188, 212, 0.3);
+}
+.bot-card-info h3 { margin: 0 0 5px 0; border: none; }
+.bot-card-info p { margin: 0; font-size: 0.9em; color: var(--text-dark); }
+.status-running { color: var(--accent-green); }
+.status-stopped { color: var(--accent-red); }
+
+.bot-card-actions { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 5px; 
+    margin-top: 10px; 
+}
+.bot-card-actions button { 
+    padding: 8px 12px; 
+    border: none; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    font-size: 0.9em;
+}
+.btn-start { background-color: var(--accent-green); color: white; }
+.btn-stop { background-color: var(--accent-red); color: white; }
+.btn-start:disabled, .btn-stop:disabled, .btn-delete:disabled, .btn-inventory:disabled { 
+    background-color: #555; 
+    cursor: not-allowed; 
+}
+.btn-delete { background-color: #b71c1c; color: white; }
+.btn-edit { background-color: var(--accent-orange); color: var(--bg-dark-1); }
+.btn-inventory { background-color: #0288d1; color: white; }
+
+/* --- Bot İstatistikleri & Radar --- */
+.stats { 
+    font-size: 0.95em; 
+    color: #ccc; 
+    margin-top: 10px; 
+    margin-bottom: 5px; 
+}
+.stats-pos { 
+    font-size: 0.8em; 
+    color: #888; 
+    font-family: monospace; 
+    margin: 0; 
+}
+.stats-radar-title {
+    font-size: 0.85em;
+    color: var(--accent-cyan);
+    margin-top: 8px;
+    margin-bottom: 4px;
+    font-weight: bold;
+}
+.radar-list {
+    font-family: monospace;
+    font-size: 0.8em;
+    margin: 0;
+    padding-left: 15px;
+    color: var(--text-dark);
+}
+.radar-player { color: var(--accent-red); font-weight: bold; }
+.radar-mob { color: var(--accent-orange); }
+.radar-object { color: #ccc; }
+
+/* --- Log Konteyneri --- */
+#log-container {
+    flex: 1;
+    overflow-y: auto;
+    border-bottom: 2px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+.log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-right: 15px;
+    padding-left: 15px;
+}
+.log-header h2 {
+    margin-bottom: 0;
+}
+.btn-show-all {
+    background: var(--accent-orange);
+    color: var(--bg-dark-1);
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 0.8em;
+    font-weight: bold;
+    cursor: pointer;
+}
+#logs {
+    padding: 15px;
+    margin: 0;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    flex: 1;
+}
+/* Log Renkleri */
+.log-log { color: var(--text-light); }
+.log-status { color: var(--accent-cyan); }
+.log-warn { color: var(--accent-yellow); }
+.log-error { color: var(--accent-red); }
+
+/* --- Genel Komut Konsolu --- */
+#global-command-console {
+    flex-shrink: 0;
+    padding: 15px;
+}
+#global-command-console .console-grid {
+    display: flex;
+    gap: 10px;
+}
+#global-command-console select { flex: 0.5; }
+#global-command-console input { flex: 1; }
+
+/* --- Modal (Popup) Stilleri --- */
+#modal-overlay, #inventory-modal-overlay {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(2px);
+}
+#modal-content, #inventory-modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--bg-dark-2);
+    padding: 30px;
+    padding-top: 20px;
+    border: 1px solid #555;
+    border-radius: 10px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+#modal-close-button, #inventory-modal-close-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: var(--text-dark);
+    font-size: 2em;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    background: none;
+}
+#modal-close-button:hover, #inventory-modal-close-button:hover { color: #fff; }
+
+/* --- Form Stilleri --- */
+#add-bot-form .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+/* YENİ: Params alanı için */
+#add-bot-form #params-group {
+    grid-column: 1 / -1; /* İki sütunu da kapla */
+}
+#add-bot-form .form-group { display: flex; flex-direction: column; }
+#add-bot-form .form-group-checkbox { flex-direction: row; align-items: center; gap: 5px; }
+#add-bot-form label { margin-bottom: 5px; font-size: 0.9em; color: var(--text-dark); }
+input[type="text"], input[type="number"], select, textarea {
+    background-color: #333;
+    border: 1px solid #555;
+    color: var(--text-light);
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 1em;
+    font-family: inherit;
+}
+/* YENİ: JSON alanı için monospace font */
+#bot-params-json {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.9em;
+}
+
+#add-bot-form button, .btn-send-cmd {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-right: 10px;
+}
+#save-bot-button { background-color: var(--accent-green); color: white; }
+#clear-form-button { background-color: #555; color: white; }
+.btn-send-cmd { background-color: var(--accent-cyan); color: var(--bg-dark-1); }
+
+/* --- Envanter Grid Stilleri (v5.0) --- */
+#inventory-modal-content { max-width: 800px; }
+#inventory-grid-container {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(5, 60px);
+    gap: 4px;
+    font-family: monospace;
+    font-size: 0.8em;
+    grid-template-areas:
+        "helmet chest legs boots . . . . offhand"
+        "i0 i1 i2 i3 i4 i5 i6 i7 i8"
+        "i9 i10 i11 i12 i13 i14 i15 i16 i17"
+        "i18 i19 i20 i21 i22 i23 i24 i25 i26"
+        "h0 h1 h2 h3 h4 h5 h6 h7 h8";
+}
+.inventory-slot {
+    background: var(--bg-dark-3);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px;
+    color: var(--text-light);
+    overflow: hidden;
+    position: relative;
+    word-break: break-word;
+}
+.inventory-slot .item-count {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 1px #111;
+}
+[data-slot-name="helmet"]  { grid-area: helmet; background-color: #222; }
+[data-slot-name="chest"]   { grid-area: chest; background-color: #222; }
+[data-slot-name="legs"]    { grid-area: legs; background-color: #222; }
+[data-slot-name="boots"]   { grid-area: boots; background-color: #222; }
+[data-slot-name="offhand"] { grid-area: offhand; background-color: #222; }
+[data-slot-name^="h"] { background-color: #383838; }
+[data-slot-name="i0"] { grid-area: i0; } [data-slot-name="i1"] { grid-area: i1; } [data-slot-name="i2"] { grid-area: i2; }
+[data-slot-name="i3"] { grid-area: i3; } [data-slot-name="i4"] { grid-area: i4; } [data-slot-name="i5"] { grid-area: i5; }
+[data-slot-name="i6"] { grid-area: i6; } [data-slot-name="i7"] { grid-area: i7; } [data-slot-name="i8"] { grid-area: i8; }
+[data-slot-name="i9"] { grid-area: i9; } [data-slot-name="i10"] { grid-area: i10; } [data-slot-name="i11"] { grid-area: i11; }
+[data-slot-name="i12"] { grid-area: i12; } [data-slot-name="i13"] { grid-area: i13; } [data-slot-name="i14"] { grid-area: i14; }
+[data-slot-name="i15"] { grid-area: i15; } [data-slot-name="i16"] { grid-area: i16; } [data-slot-name="i17"] { grid-area: i17; }
+[data-slot-name="i18"] { grid-area: i18; } [data-slot-name="i19"] { grid-area: i19; } [data-slot-name="i20"] { grid-area: i20; }
+[data-slot-name="i21"] { grid-area: i21; } [data-slot-name="i22"] { grid-area: i22; } [data-slot-name="i23"] { grid-area: i23; }
+[data-slot-name="i24"] { grid-area: i24; } [data-slot-name="i25"] { grid-area: i25; } [data-slot-name="i26"] { grid-area: i26; }
+[data-slot-name="h0"] { grid-area: h0; } [data-slot-name="h1"] { grid-area: h1; } [data-slot-name="h2"] { grid-area: h2; }
+[data-slot-name="h3"] { grid-area: h3; } [data-slot-name="h4"] { grid-area: h4; } [data-slot-name="h5"] { grid-area: h5; }
+[data-slot-name="h6"] { grid-area: h6; } [data-slot-name="h7"] { grid-area: h7; } [data-slot-name="h8"] { grid-area: h8; }

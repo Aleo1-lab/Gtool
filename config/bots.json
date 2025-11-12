@@ -9,7 +9,19 @@
     "behavior": "idle",
     "autoReconnect": true,
     "reconnectDelay": 30,
-    "params": {},
+    "params": {
+      "password": "SunucuSifren123",
+      "login_coords": {
+        "x": 100,
+        "y": 65,
+        "z": -50
+      },
+      "hit_coords": {
+        "x": 102,
+        "y": 65,
+        "z": -50
+      }
+    },
     "automation": {
       "autoEat": false,
       "foodToEat": []
@@ -60,6 +72,23 @@
     "version": "1.20.1",
     "auth": "offline",
     "behavior": "afk",
+    "autoReconnect": true,
+    "reconnectDelay": 30,
+    "params": {},
+    "automation": {
+      "autoEat": false,
+      "foodToEat": []
+    },
+    "proxy": null
+  },
+  {
+    "name": "Chilai_alenka31",
+    "username": "Chilai_alenka31",
+    "host": "aleosinsi.aternos.me",
+    "port": 49703,
+    "version": "1.20.1",
+    "auth": "offline",
+    "behavior": "idle",
     "autoReconnect": true,
     "reconnectDelay": 30,
     "params": {},

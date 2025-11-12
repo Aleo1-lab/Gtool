@@ -1,7 +1,14 @@
-// bot.js
+// bot.js (v5.4)
 const mineflayer = require('mineflayer');
 const path = require('path');
 const { SocksProxyAgent } = require('socks-proxy-agent');
+
+// GÜNCELLENDİ: v5.4 - Pathfinder'ı DOĞRU import etme
+// Plugin'i, Movements'ı ve Goals'u ana 'require'dan al
+const pathfinder = require('mineflayer-pathfinder');
+const Movements = pathfinder.Movements;
+const Goals = pathfinder.goals;
+const { GoalBlock } = Goals; // <-- HATA BURADA DÜZELTİLDİ
 
 let bot;
 let botConfig;
@@ -11,8 +18,6 @@ let botState = 'IDLE';
 let mcData;
 
 let behaviorLoaded = false;
-
-// YENİ: Düzeltme #5 - Envanter değişikliğini takip için
 let lastInventoryHash = '';
 
 function sendToController(type, payload) {
@@ -44,7 +49,6 @@ function getNearbyEntities() {
     return entities.slice(0, 5);
 }
 
-// GÜNCELLENDİ: Düzeltme #5 - Artık envanter yollamıyor
 function sendCoreStats() {
     if (bot && bot.entity && bot.health != null && bot.food != null) {
         
@@ -56,76 +60,29 @@ function sendCoreStats() {
             pos: bot.entity.position,
             state: botState,
             nearbyEntities: nearbyEntities 
-            // 'inventory' buradan kaldırıldı
         };
         
-        // Bu artık SADECE core stats'ı yollar.
-        // Diff'i controller yapacak.
         sendToController('stats', newStatsPayload);
     }
 }
 
-// YENİ: Düzeltme #5 - Sadece envanter değiştiğinde yollayan fonksiyon
 function sendInventoryStats() {
     if (!bot || !bot.inventory) return;
     
-    // Hash'i slot ve item adına göre yap (daha stabil)
     const currentHash = JSON.stringify(bot.inventory.items().map(i => i.slot + i.name + i.count));
     if (currentHash !== lastInventoryHash) {
         lastInventoryHash = currentHash;
         sendToController('stats', { 
-            inventory: bot.inventory.items() // Sadece envanter deltasını yolla
+            inventory: bot.inventory.items()
         });
     }
 }
 
 function onTick() {
-    // Bu sadece core stats'ı (HP, pos, radar) yollar
     sendCoreStats(); 
 }
 
-async function checkAutomation() {
-    if (botState !== 'IDLE') return;
-    if (automationConfig.autoEat === true && bot.food < 18) {
-        botState = 'BUSY';
-        try {
-            await startAutoEat();
-        } catch (err) {
-            sendToController('error', `[OTOMASYON] AutoEat'te kritik hata: ${err.message}`);
-        } finally {
-            botState = 'IDLE';
-        }
-    }
-}
-
-async function startAutoEat() {
-    // ... (Bu fonksiyonda değişiklik yok) ...
-    sendToController('status', `[OTOMASYON] Açlık (${bot.food}/20). Yemek aranıyor...`);
-    const foodItemsToFind = automationConfig.foodToEat || [];
-    let foodToEat = null;
-    for (const itemName of foodItemsToFind) {
-         if (!mcData || !mcData.itemsByName[itemName]) {
-            sendToController('warn', `[OTOMASYON] Bilinmeyen yemek adı: ${itemName}`);
-            continue;
-        }
-        const item = bot.inventory.findInventoryItem(mcData.itemsByName[itemName].id);
-        if (item) {
-            foodToEat = item;
-            break; 
-        }
-    }
-    if (foodToEat) {
-        sendToController('log', `[OTOMASYON] Envanterde bulundu: ${foodToEat.name}. Yeniliyor...`);
-        await bot.equip(foodToEat, 'hand');
-        await bot.consume();
-        sendToController('status', `[OTOMASYON] Beslenme tamamlandı. (Açlık: ${bot.food}/20)`);
-    } else {
-        sendToController('warn', `[OTOMASYON] Yemek yenecekti ama envanterde listedeki yiyecekler bulunamadı.`);
-    }
-}
-
-
-function loadBehavior() {
+async function loadBehavior() {
     if (behaviorLoaded) {
         sendToController('log', 'Behavior önceden yüklenmişti, tekrar yüklenmiyor (BungeeCord transferi?).');
         return;
@@ -133,19 +90,28 @@ function loadBehavior() {
     behaviorLoaded = true; 
     const behaviorName = botConfig.behavior || 'idle'; 
     sendToController('status', `Loading behavior: ${behaviorName}...`);
+    
     try {
         const behaviorPath = path.join(__dirname, 'behaviors', `${behaviorName}.js`);
         delete require.cache[require.resolve(behaviorPath)];
         const behavior = require(behaviorPath);
-        behavior(bot, botConfig.params || {});
-        sendToController('log', `Behavior '${behaviorName}' loaded successfully.`);
+        
+        const utils = { GoalBlock };
+        
+        sendToController('log', `Behavior '${behaviorName}' executing...`);
+        await behavior(bot, sendToController, botConfig.params || {}, utils);
+        sendToController('log', `Behavior '${behaviorName}' finished successfully.`);
+        
     } catch (err) {
-        sendToController('error', `Failed to load behavior '${behaviorName}': ${err.message}`);
+        sendToController('error', `[BEHAVIOR ERROR] '${behaviorName}' script failed: ${err.message}`);
+        console.error(err); 
+    } finally {
+        sendToController('status', 'Behavior execution finished or caught error.');
     }
 }
 
 function connect() {
-    lastInventoryHash = ''; // Düzeltme #5 - Cache sıfırlama
+    lastInventoryHash = '';
     sendToController('status', `Connecting to ${botConfig.host}:${botConfig.port}...`);
 
     const options = {
@@ -172,21 +138,29 @@ function connect() {
 
     bot = mineflayer.createBot(options);
     
+    // GÜNCELLENDİ: v5.4 - Plugin'i 'pathfinder' değişkeniyle yükle
+    bot.loadPlugin(pathfinder.pathfinder);
+    
     bot.on('login', () => {
         sendToController('status', 'Connected to server (login event fired).');
         mcData = require('minecraft-data')(bot.version);
+        
+        // GÜNCELLENDİ: v5.4 - 'Movements' sınıfını doğru kullan
+        const defaultMove = new Movements(bot, mcData);
+        bot.pathfinder.setMovements(defaultMove);
     });
 
-    bot.on('spawn', () => {
+    bot.on('spawn', async () => {
         sendToController('status', 'Bot spawned in world. Starting/Resetting stats reporting.');
-        loadBehavior();
+        
+        await loadBehavior(); 
+        
         if (statsInterval) clearInterval(statsInterval);
         statsInterval = setInterval(onTick, 3000); 
-        onTick(); // Core stats'ı hemen yolla
+        onTick(); 
         
-        // YENİ: Düzeltme #5 - Envanteri yollamak için event'i dinle
-        bot.on('windowUpdate', sendInventoryStats); //
-        sendInventoryStats(); // İlk envanter verisini hemen yolla
+        bot.on('windowUpdate', sendInventoryStats); 
+        sendInventoryStats(); 
     });
 
     bot.on('chat', (username, message) => {
@@ -195,7 +169,6 @@ function connect() {
         }
     });
 
-    // GÜNCELLENDİ: Düzeltme #9 - Interval Temizliği
     bot.on('kicked', (reason, loggedIn) => {
         sendToController('error', `Kicked! Reason: ${JSON.stringify(reason)}`);
         behaviorLoaded = false;
@@ -218,7 +191,6 @@ function connect() {
 }
 
 process.on('message', (message) => {
-    // ... (Bu fonksiyonda değişiklik yok) ...
     const { type, command, args } = message;
 
     if (type === 'init') {

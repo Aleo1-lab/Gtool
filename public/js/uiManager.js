@@ -1,21 +1,29 @@
-// public/js/uiManager.js
+// public/js/uiManager.js (v5.1 - Tam Sürüm)
 
 /**
- * v5.0 (Prod-Ready) - UI Yöneticisi
- * Tüm kritik düzeltmeler (XSS, CSS Grid, Constructor, renderLog) uygulandı.
+ * v5.1 (Prod-Ready) - UI Yöneticisi
+ * Form temizleme hatası düzeltildi ve Params (JSON) alanı eklendi.
+ * Kayıp render fonksiyonları (stats, inventory) geri eklendi.
  */
 export class UIManager {
     constructor(state) {
         this.state = state;
         this.botElementCache = new Map();
         
-        this.elements = {
+        this.cacheDOMElements(); 
+        this.initDOMListeners(); 
+        this.initStateListeners(); 
+    }
+    
+    cacheDOMElements() {
+         this.elements = {
             botListDiv: document.getElementById('bot-list'),
             logsPre: document.getElementById('logs'),
             logContainer: document.getElementById('log-container'),
             addBotModal: {
                 overlay: document.getElementById('modal-overlay'),
-                closeButton: document.getElementById('modal-close-button')
+                closeButton: document.getElementById('modal-close-button'),
+                showButton: document.getElementById('show-add-bot-modal') 
             },
             inventoryModal: {
                 overlay: document.getElementById('inventory-modal-overlay'),
@@ -34,6 +42,7 @@ export class UIManager {
                 auth: document.getElementById('bot-auth'),
                 behavior: document.getElementById('bot-behavior'),
                 autoReconnect: document.getElementById('bot-autoReconnect'),
+                paramsJson: document.getElementById('bot-params-json'), 
                 proxyHost: document.getElementById('proxy-host'),
                 proxyPort: document.getElementById('proxy-port')
             },
@@ -42,12 +51,8 @@ export class UIManager {
                 input: document.getElementById('global-command-input'),
                 sendButton: document.getElementById('global-send-button')
             },
-            // GÜNCELLENDİ: Düzeltme #1 - Buton artık statik HTML'den bulunuyor
             showAllLogsButton: document.getElementById('btn-show-all-logs')
         };
-        
-        this.initDOMListeners();
-        this.initStateListeners();
     }
 
     initStateListeners() {
@@ -84,10 +89,9 @@ export class UIManager {
             } catch (e) { console.error("Error in 'state:botRemoved' UI handler:", e); }
         });
         
-        // GÜNCELLENDİ: Düzeltme (Kritik) - 'renderLog' listener'ı düzeltildi
         this.state.on('state:log', (logData) => {
             try {
-                this.renderLog(logData); // Artık 'this.renderLog' var
+                this.renderLog(logData);
             } catch (e) { console.error("Error in 'state:log' UI handler:", e); }
         });
         
@@ -126,6 +130,9 @@ export class UIManager {
                     const action = actionButton.dataset.action;
                     if (action === 'inventory') {
                         this.elements.inventoryModal.title.textContent = `${botName} Envanteri`;
+                        // Envanteri state'den iste (delta gelmemişse diye)
+                        const botState = this.state.botStore.get(botName);
+                        this.renderInventory(botState.stats.inventory || []);
                         this.elements.inventoryModal.overlay.style.display = 'block';
                     } else if (action === 'edit') {
                         this.state.requestConfigForEdit(botName);
@@ -149,6 +156,17 @@ export class UIManager {
             this.elements.botForm.form.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const f = this.elements.botForm;
+                
+                let params = {};
+                try {
+                    if (f.paramsJson.value.trim()) {
+                        params = JSON.parse(f.paramsJson.value);
+                    }
+                } catch (err) {
+                    alert(`HATA: Girdiğiniz Params (JSON) verisi geçersiz:\n${err.message}\n\nLütfen düzeltin veya boş bırakın.`);
+                    return;
+                }
+                
                 const botData = {
                     name: f.name.value,
                     username: f.username.value,
@@ -158,7 +176,8 @@ export class UIManager {
                     auth: f.auth.value,
                     behavior: f.behavior.value,
                     autoReconnect: f.autoReconnect.checked,
-                    reconnectDelay: 30, params: {},
+                    reconnectDelay: 30, 
+                    params: params, 
                     automation: { autoEat: false, foodToEat: [] },
                     proxy: {
                         host: f.proxyHost.value || null,
@@ -166,6 +185,7 @@ export class UIManager {
                     }
                 };
                 if (!botData.proxy.host || !botData.proxy.port) botData.proxy = null;
+                
                 this.state.submitBotForm(botData);
                 this.elements.addBotModal.overlay.style.display = 'none';
                 this.elements.botForm.form.reset();
@@ -184,7 +204,7 @@ export class UIManager {
     }
     
     // =====================================================================
-    // --- DOM Render Fonksiyonları (v5.0 - XSS Korumalı) ---
+    // --- DOM Render Fonksiyonları (v5.1 - TAM) ---
     // =====================================================================
     
     addBotCard(bot) {
@@ -201,8 +221,7 @@ export class UIManager {
             this.updateConfig(cardElement, changed.config);
         }
         if (changed.stats !== undefined) {
-            const isRunning = cardElement.dataset.status === 'running';
-            this.updateStats(cardElement, changed.stats, isRunning);
+            this.updateStats(cardElement, changed.stats);
         }
     }
 
@@ -219,7 +238,7 @@ export class UIManager {
         
         const botState = cardElement.querySelector('.bot-state-text')?.textContent || '...';
         
-        statusElement.innerHTML = ''; // XSS Düzeltmesi
+        statusElement.innerHTML = ''; 
         const statusTextNode = document.createTextNode(isRunning ? 'Running (' : 'Stopped');
         statusElement.appendChild(statusTextNode);
         if (isRunning) {
@@ -240,11 +259,12 @@ export class UIManager {
 
     updateConfig(cardElement, newConfig) {
         const behaviorElement = cardElement.querySelector('.bot-behavior-text');
-        if (behaviorElement) behaviorElement.textContent = newConfig.behavior || 'idle'; // XSS Düzeltmesi
+        if (behaviorElement) behaviorElement.textContent = newConfig.behavior || 'idle'; 
     }
 
-    updateStats(cardElement, deltaStats, isRunning) {
+    updateStats(cardElement, deltaStats) {
         const statsDynamicElement = cardElement.querySelector('.bot-stats-dynamic');
+        const isRunning = cardElement.dataset.status === 'running';
 
         if (deltaStats.state !== undefined) {
             let stateTextElement = cardElement.querySelector('.bot-state-text');
@@ -253,7 +273,7 @@ export class UIManager {
                 stateTextElement = cardElement.querySelector('.bot-state-text');
             }
             if (stateTextElement) {
-                stateTextElement.textContent = deltaStats.state; // XSS Düzeltmesi
+                stateTextElement.textContent = deltaStats.state; 
             }
             let statsPosElement = statsDynamicElement.querySelector('.stats-pos');
             if (statsPosElement && statsPosElement.textContent.includes('Spawning')) { 
@@ -295,6 +315,9 @@ export class UIManager {
         }
         
         if (deltaStats.inventory !== undefined) {
+            const botState = this.state.botStore.get(cardElement.dataset.botname);
+            if(botState) botState.stats.inventory = deltaStats.inventory;
+            
             if (this.elements.inventoryModal.overlay.style.display === 'block' && 
                 this.elements.inventoryModal.title.textContent.includes(cardElement.dataset.botname)) {
                 this.renderInventory(deltaStats.inventory);
@@ -307,12 +330,11 @@ export class UIManager {
         card.className = 'bot-card';
         card.dataset.botname = botName;
         card.dataset.status = status; 
-        card.dataset.currentHealth = stats.health || '?';
-        card.dataset.currentFood = stats.food || '?';
+        card.dataset.currentHealth = stats?.health || '?';
+        card.dataset.currentFood = stats?.food || '?';
 
         const isRunning = status === 'running';
         
-        // DÜZELTME #3 (XSS): innerHTML yerine DOM oluşturma
         const infoDiv = document.createElement('div');
         infoDiv.className = 'bot-card-info';
         
@@ -369,7 +391,7 @@ export class UIManager {
     }
 
     // =====================================================================
-    // --- Yardımcı Render Fonksiyonları (v5.0 - XSS Korumalı) ---
+    // --- Yardımcı Render Fonksiyonları (v5.1 - TAM) ---
     // =====================================================================
 
     renderStatsHtml(isRunning, stats) {
@@ -383,7 +405,7 @@ export class UIManager {
                 const stateText = stats?.state || '...';
                 statsHtml = `<p class="stats-pos">Durum: Spawning... (<span class="bot-state-text">${stateText}</span>)</p>`;
             }
-            radarHtml = this.renderRadar(null, stats.nearbyEntities || []);
+            radarHtml = this.renderRadar(null, stats?.nearbyEntities || []);
         }
         return statsHtml + radarHtml;
     }
@@ -391,6 +413,7 @@ export class UIManager {
     renderRadar(statsDynamicElement, entities) {
         const fragment = document.createDocumentFragment();
         let radarList, radarTitle;
+        if (!entities) entities = [];
 
         if (statsDynamicElement) {
             radarTitle = statsDynamicElement.querySelector('.stats-radar-title');
@@ -414,13 +437,13 @@ export class UIManager {
                 const li = document.createElement('li');
                 const typeClass = e.type === 'Player' ? 'radar-player' : (e.type === 'Mob' ? 'radar-mob' : 'radar-object');
                 li.className = typeClass;
-                li.textContent = `[${e.type}] ${e.name} (${e.distance}m)`; // XSS Düzeltmesi
+                li.textContent = `[${e.type}] ${e.name} (${e.distance}m)`; 
                 fragment.appendChild(li); 
             });
         }
 
         if (statsDynamicElement) {
-            radarTitle.textContent = titleText; // XSS Düzeltmesi
+            radarTitle.textContent = titleText; 
             radarList.innerHTML = ''; 
             radarList.appendChild(fragment); 
         } else {
@@ -431,7 +454,6 @@ export class UIManager {
         }
     }
 
-    // GÜNCELLENDİ: Düzeltme #3 (XSS) ve #4 (CSS Grid)
     renderInventory(items) {
         const grid = this.elements.inventoryModal.grid;
         grid.innerHTML = ''; 
@@ -460,15 +482,15 @@ export class UIManager {
             const item = slots[slotId];
             const slotDiv = document.createElement('div');
             slotDiv.className = 'inventory-slot';
-            slotDiv.dataset.slotName = slotNames[slotId]; // Düzeltme #4
+            slotDiv.dataset.slotName = slotNames[slotId]; 
             
             if (item) {
-                slotDiv.textContent = item.displayName; // XSS Düzeltmesi
+                slotDiv.textContent = item.displayName; 
                 slotDiv.title = `${item.name} (id: ${item.type})`;
                 if (item.count > 1) {
                     const countSpan = document.createElement('span');
                     countSpan.className = 'item-count';
-                    countSpan.textContent = item.count; // XSS Düzeltmesi
+                    countSpan.textContent = item.count; 
                     slotDiv.appendChild(countSpan);
                 }
             }
@@ -478,14 +500,12 @@ export class UIManager {
         grid.appendChild(fragment);
     }
     
-    // YENİ: Düzeltme (Kritik) - Kayıp 'renderLog' fonksiyonu eklendi
     renderLog(logData) {
         const logElement = document.createElement('span');
         const time = new Date().toLocaleTimeString();
         logElement.className = `log-${logData.type || 'log'}`;
         logElement.dataset.prefix = logData.prefix;
         
-        // DÜZELTME #3 (XSS): textContent kullan
         logElement.textContent = `[${time}] [${logData.prefix}] ${logData.message}\n`;
         
         if (this.state.focusedBot && this.state.focusedBot !== logData.prefix) {
@@ -499,34 +519,44 @@ export class UIManager {
 
     updateCommandTargetSelector() {
         const selector = this.elements.commandConsole.targetSelector;
+        const currentTarget = selector.value;
         const newBotOptions = ['<option value="*">Tüm Botlar (Running)</option>'];
+        let targetStillExists = false;
+        
         for (const [botName, cardElement] of this.botElementCache.entries()) {
             if (cardElement.dataset.status === 'running') {
-                newBotOptions.push(`<option value="${botName}">${botName}</option>`);
+                const selected = (botName === currentTarget) ? ' selected' : '';
+                if (selected) targetStillExists = true;
+                newBotOptions.push(`<option value="${botName}"${selected}>${botName}</option>`);
             }
         }
         selector.innerHTML = newBotOptions.join('');
-    }
-
-    // GÜNCELLENDİ: Düzeltme #1 - Artık 'state' almıyor
-    createFocusResetButton() {
-        const h2 = this.elements.logContainer.querySelector('h2');
-        let showAllButton = this.elements.logContainer.querySelector('#btn-show-all-logs');
-        // Bu fonksiyon artık constructor'da çağrıldığı için
-        // ve buton statik HTML'de olduğu için, bu 'if' bloğu
-        // artık gereksiz, ama 'getElementById' ile buluyoruz.
-        return document.getElementById('btn-show-all-logs');
+        if (!targetStillExists) {
+            selector.value = '*';
+        }
     }
 
     initModalToggles(modal, clearButton, formToReset) {
+        if (modal.showButton) {
+            modal.showButton.addEventListener('click', () => {
+                if (formToReset) {
+                    formToReset.reset(); 
+                    this.elements.botForm.paramsJson.value = ''; 
+                }
+                modal.overlay.style.display = 'block';
+            });
+        }
+        
         modal.closeButton.addEventListener('click', () => modal.overlay.style.display = 'none');
+        
         modal.overlay.addEventListener('click', (e) => {
             if (e.target === modal.overlay) modal.overlay.style.display = 'none';
         });
+        
         if (clearButton) {
             clearButton.addEventListener('click', () => {
                 formToReset.reset();
-                document.getElementById('bot-name').value = ''; 
+                this.elements.botForm.paramsJson.value = ''; 
             });
         }
     }
@@ -541,12 +571,14 @@ export class UIManager {
         f.auth.value = botConfig.auth || 'offline';
         f.behavior.value = botConfig.behavior || 'idle';
         f.autoReconnect.checked = botConfig.autoReconnect !== false;
+        
+        f.paramsJson.value = botConfig.params ? JSON.stringify(botConfig.params, null, 2) : '';
+        
         f.proxyHost.value = botConfig.proxy ? botConfig.proxy.host : '';
         f.proxyPort.value = botConfig.proxy ? botConfig.proxy.port : '';
     }
 }
 
-// Düzeltme #8: filterLogs (artık 'export' ediliyor)
 export function filterLogs(focusedBotName, logsPreElement) {
     const allLogs = logsPreElement.querySelectorAll('span');
     let hasVisibleLogs = false;
