@@ -6,7 +6,7 @@
     "port": 49703,
     "version": "1.20.1",
     "auth": "offline",
-    "behavior": "idle",
+    "behavior": "login_example.js",
     "autoReconnect": true,
     "reconnectDelay": 30,
     "params": {
@@ -30,22 +30,23 @@
   },
   {
     "name": "AFK_Bot",
-    "host": "aldede13.aternos.me",
-    "port": 49843,
     "username": "AFK_Bot",
-    "auth": "offline",
+    "host": "aleosinsi.aternos.me",
+    "port": 49703,
     "version": "1.20.1",
+    "auth": "offline",
     "behavior": "afk",
+    "autoReconnect": true,
+    "reconnectDelay": 30,
     "params": {
       "command": "/afk",
       "jumpInterval": 10000
     },
-    "autoReconnect": true,
-    "reconnectDelay": 30,
     "automation": {
       "autoEat": false,
       "foodToEat": []
-    }
+    },
+    "proxy": null
   },
   {
     "name": "TestBot_2",
@@ -71,10 +72,22 @@
     "port": 25565,
     "version": "1.20.1",
     "auth": "offline",
-    "behavior": "afk",
+    "behavior": "login_example.js",
     "autoReconnect": true,
     "reconnectDelay": 30,
-    "params": {},
+    "params": {
+      "password": "kop3167Ops",
+      "login_coords": {
+        "x": -27,
+        "y": 107,
+        "z": -1
+      },
+      "hit_coords": {
+        "x": -28,
+        "y": 109,
+        "z": -1
+      }
+    },
     "automation": {
       "autoEat": false,
       "foodToEat": []
@@ -88,7 +101,36 @@
     "port": 49703,
     "version": "1.20.1",
     "auth": "offline",
-    "behavior": "idle",
+    "behavior": "login_example.js",
+    "autoReconnect": true,
+    "reconnectDelay": 30,
+    "params": {
+      "password": "k90utOps",
+      "login_coords": {
+        "x": -27,
+        "y": 107,
+        "z": -1
+      },
+      "hit_coords": {
+        "x": -28,
+        "y": 109,
+        "z": -1
+      }
+    },
+    "automation": {
+      "autoEat": false,
+      "foodToEat": []
+    },
+    "proxy": null
+  },
+  {
+    "name": "das",
+    "username": "dsa",
+    "host": "das",
+    "port": 25565,
+    "version": "1.20.1",
+    "auth": "offline",
+    "behavior": "afk.js",
     "autoReconnect": true,
     "reconnectDelay": 30,
     "params": {},

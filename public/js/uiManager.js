@@ -1,10 +1,6 @@
-// public/js/uiManager.js (v5.1 - Tam Sürüm)
+// public/js/uiManager.js (v6.0.1 - Hata Düzeltmesi)
+import { filterLogs } from './uiUtils.js'; 
 
-/**
- * v5.1 (Prod-Ready) - UI Yöneticisi
- * Form temizleme hatası düzeltildi ve Params (JSON) alanı eklendi.
- * Kayıp render fonksiyonları (stats, inventory) geri eklendi.
- */
 export class UIManager {
     constructor(state) {
         this.state = state;
@@ -31,6 +27,22 @@ export class UIManager {
                 title: document.getElementById('inventory-modal-title'),
                 grid: document.getElementById('inventory-grid-container')
             },
+            taskModal: {
+                overlay: document.getElementById('task-modal-overlay'),
+                closeButton: document.getElementById('task-modal-close-button'),
+                title: document.getElementById('task-modal-title'),
+                list: document.getElementById('task-queue-list'),
+                form: document.getElementById('add-task-form'),
+                botNameInput: document.getElementById('task-bot-name'),
+                scriptSelect: document.getElementById('task-script-name'),
+                paramsJson: document.getElementById('task-params-json')
+            },
+            taskLogModal: {
+                overlay: document.getElementById('task-log-modal-overlay'),
+                closeButton: document.getElementById('task-log-modal-close-button'),
+                title: document.getElementById('task-log-modal-title'),
+                output: document.getElementById('task-log-output')
+            },
             botForm: {
                 form: document.getElementById('add-bot-form'),
                 clearButton: document.getElementById('clear-form-button'),
@@ -40,7 +52,7 @@ export class UIManager {
                 port: document.getElementById('bot-port'),
                 version: document.getElementById('bot-version'),
                 auth: document.getElementById('bot-auth'),
-                behavior: document.getElementById('bot-behavior'),
+                behavior: document.getElementById('bot-behavior'), 
                 autoReconnect: document.getElementById('bot-autoReconnect'),
                 paramsJson: document.getElementById('bot-params-json'), 
                 proxyHost: document.getElementById('proxy-host'),
@@ -76,6 +88,7 @@ export class UIManager {
             try {
                 if (this.botElementCache.has(bot.name)) return;
                 this.addBotCard(bot);
+                this.updateCommandTargetSelector(); 
             } catch (e) { console.error("Error in 'state:botAdded' UI handler:", e); }
         });
 
@@ -114,6 +127,53 @@ export class UIManager {
                 filterLogs(newFocus, this.elements.logsPre);
             } catch (e) { console.error("Error in 'state:focusedBotChanged' UI handler:", e); }
         });
+        
+        this.state.on('state:scriptsLoaded', () => {
+            try {
+                const behaviorSelect = this.elements.botForm.behavior;
+                behaviorSelect.innerHTML = ''; 
+                this.state.availableBehaviors.forEach(scriptName => {
+                    const option = document.createElement('option');
+                    option.value = scriptName;
+                    option.textContent = scriptName;
+                    behaviorSelect.appendChild(option);
+                });
+                
+                const taskSelect = this.elements.taskModal.scriptSelect;
+                taskSelect.innerHTML = '<option value="">Script Seçin...</option>'; 
+                this.state.availableTaskScripts.forEach(scriptName => {
+                    const option = document.createElement('option');
+                    option.value = scriptName;
+                    option.textContent = scriptName;
+                    taskSelect.appendChild(option);
+                });
+            } catch(e) { console.error("Error in 'state:scriptsLoaded' UI handler:", e); }
+        });
+
+        this.state.on('state:showTaskModal', (bot) => {
+            try {
+                this.elements.taskModal.title.textContent = `Görev Yöneticisi: ${bot.name}`;
+                this.elements.taskModal.botNameInput.value = bot.name;
+                this.renderTaskQueue(bot.name, bot.taskQueue || []);
+                this.elements.taskModal.overlay.style.display = 'block';
+            } catch(e) { console.error("Error in 'state:showTaskModal' UI handler:", e); }
+        });
+        
+        this.state.on('state:showTaskLogModal', ({ botName, task }) => {
+            try {
+                this.elements.taskLogModal.title.textContent = `Canlı Log: ${botName} - ${task.scriptName.split('.')[0]}`;
+                this.elements.taskLogModal.output.innerHTML = ''; 
+                this.elements.taskLogModal.overlay.style.display = 'block';
+            } catch(e) { console.error("Error in 'state:showTaskLogModal' UI handler:", e); }
+        });
+
+        this.state.on('state:taskLogStream', (message) => {
+            try {
+                const logEl = this.elements.taskLogModal.output;
+                logEl.textContent += message + '\n';
+                logEl.scrollTop = logEl.scrollHeight; 
+            } catch(e) { console.error("Error in 'state:taskLogStream' UI handler:", e); }
+        });
     }
     
     initDOMListeners() {
@@ -128,14 +188,19 @@ export class UIManager {
                 if (actionButton) {
                     e.stopPropagation(); 
                     const action = actionButton.dataset.action;
+                    
                     if (action === 'inventory') {
                         this.elements.inventoryModal.title.textContent = `${botName} Envanteri`;
-                        // Envanteri state'den iste (delta gelmemişse diye)
                         const botState = this.state.botStore.get(botName);
                         this.renderInventory(botState.stats.inventory || []);
                         this.elements.inventoryModal.overlay.style.display = 'block';
+                    
                     } else if (action === 'edit') {
                         this.state.requestConfigForEdit(botName);
+                    
+                    } else if (action === 'tasks') {
+                        this.state.requestTaskModal(botName);
+                    
                     } else {
                         this.state.requestBotAction(action, botName);
                     }
@@ -156,33 +221,19 @@ export class UIManager {
             this.elements.botForm.form.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const f = this.elements.botForm;
-                
                 let params = {};
                 try {
-                    if (f.paramsJson.value.trim()) {
-                        params = JSON.parse(f.paramsJson.value);
-                    }
+                    if (f.paramsJson.value.trim()) params = JSON.parse(f.paramsJson.value);
                 } catch (err) {
-                    alert(`HATA: Girdiğiniz Params (JSON) verisi geçersiz:\n${err.message}\n\nLütfen düzeltin veya boş bırakın.`);
-                    return;
+                    alert(`HATA: Params (JSON) verisi geçersiz:\n${err.message}`); return;
                 }
-                
                 const botData = {
-                    name: f.name.value,
-                    username: f.username.value,
-                    host: f.host.value,
-                    port: parseInt(f.port.value),
-                    version: f.version.value,
-                    auth: f.auth.value,
-                    behavior: f.behavior.value,
-                    autoReconnect: f.autoReconnect.checked,
-                    reconnectDelay: 30, 
-                    params: params, 
+                    name: f.name.value, username: f.username.value, host: f.host.value,
+                    port: parseInt(f.port.value), version: f.version.value, auth: f.auth.value,
+                    behavior: f.behavior.value, autoReconnect: f.autoReconnect.checked,
+                    reconnectDelay: 30, params: params, 
                     automation: { autoEat: false, foodToEat: [] },
-                    proxy: {
-                        host: f.proxyHost.value || null,
-                        port: parseInt(f.proxyPort.value) || null,
-                    }
+                    proxy: { host: f.proxyHost.value || null, port: parseInt(f.proxyPort.value) || null }
                 };
                 if (!botData.proxy.host || !botData.proxy.port) botData.proxy = null;
                 
@@ -191,8 +242,38 @@ export class UIManager {
                 this.elements.botForm.form.reset();
             });
             
+            this.elements.taskModal.form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const f = this.elements.taskModal;
+                let params = {};
+                try {
+                    if (f.paramsJson.value.trim()) params = JSON.parse(f.paramsJson.value);
+                } catch (err) {
+                    alert(`HATA: Görev Parametreleri (JSON) geçersiz:\n${err.message}`); return;
+                }
+                
+                const taskData = {
+                    botName: f.botNameInput.value,
+                    scriptName: f.scriptSelect.value,
+                    params: params
+                };
+
+                if (!taskData.botName || !taskData.scriptName) {
+                    alert('Bot adı veya script adı eksik.'); return;
+                }
+                
+                this.state.requestAddTask(taskData);
+                f.form.reset(); 
+                f.scriptSelect.value = ""; 
+            });
+
             this.initModalToggles(this.elements.addBotModal, this.elements.botForm.clearButton, this.elements.botForm.form);
             this.initModalToggles(this.elements.inventoryModal, null, null);
+            this.initModalToggles(this.elements.taskModal, null, this.elements.taskModal.form);
+            
+            this.initModalToggles(this.elements.taskLogModal, null, null, () => {
+                this.state.requestStopTaskLogView(); 
+            });
             
             this.elements.showAllLogsButton.addEventListener('click', () => {
                 this.state.setFocusedBot(null); 
@@ -204,11 +285,11 @@ export class UIManager {
     }
     
     // =====================================================================
-    // --- DOM Render Fonksiyonları (v5.1 - TAM) ---
+    // --- DOM Render Fonksiyonları (v6.0 - GÜNCELLENDİ) ---
     // =====================================================================
     
     addBotCard(bot) {
-        const botCard = this.createBotCard(bot.name, bot.config, bot.status, bot.stats);
+        const botCard = this.createBotCard(bot.name, bot.config, bot.status, bot.stats, bot.taskQueue);
         this.elements.botListDiv.appendChild(botCard);
         this.botElementCache.set(bot.name, botCard);
     }
@@ -222,6 +303,9 @@ export class UIManager {
         }
         if (changed.stats !== undefined) {
             this.updateStats(cardElement, changed.stats);
+        }
+        if (changed.taskQueue !== undefined) {
+            this.renderTaskQueue(cardElement.dataset.botname, changed.taskQueue, cardElement);
         }
     }
 
@@ -253,6 +337,7 @@ export class UIManager {
         cardElement.querySelector('[data-action="stop"]').disabled = !isRunning;
         cardElement.querySelector('[data-action="delete"]').disabled = isRunning;
         cardElement.querySelector('[data-action="inventory"]').disabled = !isRunning;
+        cardElement.querySelector('[data-action="tasks"]').disabled = false; 
         
         this.updateCommandTargetSelector();
     }
@@ -272,20 +357,16 @@ export class UIManager {
                  this.updateStatus(cardElement, 'running'); 
                 stateTextElement = cardElement.querySelector('.bot-state-text');
             }
-            if (stateTextElement) {
-                stateTextElement.textContent = deltaStats.state; 
-            }
+            if (stateTextElement) stateTextElement.textContent = deltaStats.state; 
             let statsPosElement = statsDynamicElement.querySelector('.stats-pos');
             if (statsPosElement && statsPosElement.textContent.includes('Spawning')) { 
                  statsPosElement.textContent = `Durum: Spawning... (${deltaStats.state})`;
             }
         }
-
         if (deltaStats.health !== undefined || deltaStats.food !== undefined) {
             let statsElement = statsDynamicElement.querySelector('.stats');
             if (!statsElement) {
-                statsElement = document.createElement('p');
-                statsElement.className = 'stats';
+                statsElement = document.createElement('p'); statsElement.className = 'stats';
                 statsDynamicElement.prepend(statsElement); 
             }
             const health = deltaStats.health ?? parseFloat(cardElement.dataset.currentHealth) ?? '?';
@@ -294,13 +375,11 @@ export class UIManager {
             cardElement.dataset.currentHealth = health;
             cardElement.dataset.currentFood = food;
         }
-        
         if (deltaStats.pos !== undefined) {
             let posElement = statsDynamicElement.querySelector('.stats-pos');
             if (!posElement || posElement.textContent.includes('Spawning')) {
                 if (!posElement) {
-                    posElement = document.createElement('p');
-                    posElement.className = 'stats-pos';
+                    posElement = document.createElement('p'); posElement.className = 'stats-pos';
                     const statsEl = statsDynamicElement.querySelector('.stats');
                     if (statsEl) statsEl.after(posElement);
                     else statsDynamicElement.appendChild(posElement);
@@ -309,15 +388,12 @@ export class UIManager {
             const pos = deltaStats.pos;
             posElement.textContent = `Pozisyon: X: ${Math.floor(pos.x)}, Y: ${Math.floor(pos.y)}, Z: ${Math.floor(pos.z)}`;
         }
-        
         if (deltaStats.nearbyEntities !== undefined) {
             this.renderRadar(statsDynamicElement, deltaStats.nearbyEntities);
         }
-        
         if (deltaStats.inventory !== undefined) {
             const botState = this.state.botStore.get(cardElement.dataset.botname);
             if(botState) botState.stats.inventory = deltaStats.inventory;
-            
             if (this.elements.inventoryModal.overlay.style.display === 'block' && 
                 this.elements.inventoryModal.title.textContent.includes(cardElement.dataset.botname)) {
                 this.renderInventory(deltaStats.inventory);
@@ -325,7 +401,7 @@ export class UIManager {
         }
     }
 
-    createBotCard(botName, config, status, stats) {
+    createBotCard(botName, config, status, stats, taskQueue) {
         const card = document.createElement('div');
         card.className = 'bot-card';
         card.dataset.botname = botName;
@@ -346,7 +422,6 @@ export class UIManager {
         const statusStrong = document.createElement('strong');
         statusStrong.className = `bot-status-text status-${isRunning ? 'running' : 'stopped'}`;
         statusStrong.dataset.statusClass = `status-${isRunning ? 'running' : 'stopped'}`;
-        
         const botState = (isRunning && stats && stats.state) ? stats.state : '...';
         const statusTextNode = document.createTextNode(isRunning ? 'Running (' : 'Stopped');
         statusStrong.appendChild(statusTextNode);
@@ -360,7 +435,6 @@ export class UIManager {
         statusP.appendChild(document.createTextNode('Status: '));
         statusP.appendChild(statusStrong);
         infoDiv.appendChild(statusP);
-        
         const behaviorP = document.createElement('p');
         behaviorP.textContent = 'Behavior: '; 
         const behaviorSpan = document.createElement('span');
@@ -374,7 +448,15 @@ export class UIManager {
         statsDiv.innerHTML = this.renderStatsHtml(isRunning, stats);
         infoDiv.appendChild(statsDiv);
         
-        card.appendChild(infoDiv);
+        const taskQueueDiv = document.createElement('div');
+        taskQueueDiv.className = 'bot-task-queue';
+        infoDiv.appendChild(taskQueueDiv);
+        
+        // --- HATA DÜZELTMESİ BURADA ---
+        // `infoDiv`'i `card`'a ekledikten SONRA `renderTaskQueue`'i çağır.
+        card.appendChild(infoDiv); // ÖNCE EKLE
+        this.renderTaskQueue(botName, taskQueue, card); // SONRA ÇAĞIR
+        // --- HATA DÜZELTMESİ BİTTİ ---
         
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'bot-card-actions';
@@ -384,6 +466,7 @@ export class UIManager {
             <button class="btn-edit" data-action="edit" title="Düzenle">&#9998;</button>
             <button class="btn-delete" ${isRunning ? 'disabled' : ''} data-action="delete" title="Sil">&#128465;</button>
             <button class="btn-inventory" ${!isRunning ? 'disabled' : ''} data-action="inventory" title="Envanter">📦</button>
+            <button class="btn-tasks" data-action="tasks" title="Görevler">📝</button>
         `;
         card.appendChild(actionsDiv);
             
@@ -391,12 +474,11 @@ export class UIManager {
     }
 
     // =====================================================================
-    // --- Yardımcı Render Fonksiyonları (v5.1 - TAM) ---
+    // --- Yardımcı Render Fonksiyonları (v6.0 - GÜNCELLENDİ) ---
     // =====================================================================
 
     renderStatsHtml(isRunning, stats) {
-        let statsHtml = '<p class="stats-pos">Durum: Not spawned</p>';
-        let radarHtml = '';
+        let statsHtml = '<p class="stats-pos">Durum: Not spawned</p>'; let radarHtml = '';
         if (isRunning) {
             if (stats && stats.health != null) {
                 const pos = stats.pos ? `X: ${Math.floor(stats.pos.x)}, Y: ${Math.floor(stats.pos.y)}, Z: ${Math.floor(stats.pos.z)}` : 'N/A';
@@ -409,27 +491,15 @@ export class UIManager {
         }
         return statsHtml + radarHtml;
     }
-
     renderRadar(statsDynamicElement, entities) {
         const fragment = document.createDocumentFragment();
-        let radarList, radarTitle;
-        if (!entities) entities = [];
-
+        let radarList, radarTitle; if (!entities) entities = [];
         if (statsDynamicElement) {
             radarTitle = statsDynamicElement.querySelector('.stats-radar-title');
             radarList = statsDynamicElement.querySelector('.radar-list');
-            if (!radarTitle) {
-                radarTitle = document.createElement('p');
-                radarTitle.className = 'stats-radar-title';
-                statsDynamicElement.appendChild(radarTitle);
-            }
-            if (!radarList) {
-                radarList = document.createElement('ul');
-                radarList.className = 'radar-list';
-                statsDynamicElement.appendChild(radarList);
-            }
+            if (!radarTitle) { radarTitle = document.createElement('p'); radarTitle.className = 'stats-radar-title'; statsDynamicElement.appendChild(radarTitle); }
+            if (!radarList) { radarList = document.createElement('ul'); radarList.className = 'radar-list'; statsDynamicElement.appendChild(radarList); }
         }
-        
         let titleText = 'Radar: (Etraf Temiz)';
         if (entities.length > 0) {
             titleText = `Radar (En Yakın ${entities.length}):`;
@@ -441,62 +511,28 @@ export class UIManager {
                 fragment.appendChild(li); 
             });
         }
-
         if (statsDynamicElement) {
-            radarTitle.textContent = titleText; 
-            radarList.innerHTML = ''; 
-            radarList.appendChild(fragment); 
+            radarTitle.textContent = titleText; radarList.innerHTML = ''; radarList.appendChild(fragment); 
         } else {
-            const listHtml = Array.from(fragment.childNodes)
-                                .map(node => node.outerHTML)
-                                .join('');
+            const listHtml = Array.from(fragment.childNodes).map(node => node.outerHTML).join('');
             return `<p class="stats-radar-title">${titleText}</p><ul class="radar-list">${listHtml}</ul>`;
         }
     }
-
     renderInventory(items) {
-        const grid = this.elements.inventoryModal.grid;
-        grid.innerHTML = ''; 
-        
-        const slotNames = {
-            5: "helmet", 6: "chest", 7: "legs", 8: "boots", 45: "offhand",
-            9: "i0", 10: "i1", 11: "i2", 12: "i3", 13: "i4", 14: "i5", 15: "i6", 16: "i7", 17: "i8",
-            18: "i9", 19: "i10", 20: "i11", 21: "i12", 22: "i13", 23: "i14", 24: "i15", 25: "i16", 26: "i17",
-            27: "i18", 28: "i19", 29: "i20", 30: "i21", 31: "i22", 32: "i23", 33: "i24", 34: "i25", 35: "i26",
-            36: "h0", 37: "h1", 38: "h2", 39: "h3", 40: "h4", 41: "h5", 42: "h6", 43: "h7", 44: "h8"
-        };
-        
-        const slots = {};
-        for (let i = 5; i <= 45; i++) slots[i] = null;
-        if (items) {
-            items.forEach(item => {
-                if (item && slots.hasOwnProperty(item.slot)) {
-                    slots[item.slot] = item;
-                }
-            });
-        }
-
+        const grid = this.elements.inventoryModal.grid; grid.innerHTML = ''; 
+        const slotNames = { 5: "helmet", 6: "chest", 7: "legs", 8: "boots", 45: "offhand", 9: "i0", 10: "i1", 11: "i2", 12: "i3", 13: "i4", 14: "i5", 15: "i6", 16: "i7", 17: "i8", 18: "i9", 19: "i10", 20: "i11", 21: "i12", 22: "i13", 23: "i14", 24: "i15", 25: "i16", 26: "i17", 27: "i18", 28: "i19", 29: "i20", 30: "i21", 31: "i22", 32: "i23", 33: "i24", 34: "i25", 35: "i26", 36: "h0", 37: "h1", 38: "h2", 39: "h3", 40: "h4", 41: "h5", 42: "h6", 43: "h7", 44: "h8" };
+        const slots = {}; for (let i = 5; i <= 45; i++) slots[i] = null;
+        if (items) { items.forEach(item => { if (item && slots.hasOwnProperty(item.slot)) { slots[item.slot] = item; } }); }
         const fragment = document.createDocumentFragment(); 
-
         for (const slotId in slots) {
-            const item = slots[slotId];
-            const slotDiv = document.createElement('div');
-            slotDiv.className = 'inventory-slot';
-            slotDiv.dataset.slotName = slotNames[slotId]; 
-            
+            const item = slots[slotId]; const slotDiv = document.createElement('div');
+            slotDiv.className = 'inventory-slot'; slotDiv.dataset.slotName = slotNames[slotId]; 
             if (item) {
-                slotDiv.textContent = item.displayName; 
-                slotDiv.title = `${item.name} (id: ${item.type})`;
-                if (item.count > 1) {
-                    const countSpan = document.createElement('span');
-                    countSpan.className = 'item-count';
-                    countSpan.textContent = item.count; 
-                    slotDiv.appendChild(countSpan);
-                }
+                slotDiv.textContent = item.displayName; slotDiv.title = `${item.name} (id: ${item.type})`;
+                if (item.count > 1) { const countSpan = document.createElement('span'); countSpan.className = 'item-count'; countSpan.textContent = item.count; slotDiv.appendChild(countSpan); }
             }
             fragment.appendChild(slotDiv);
         }
-        
         grid.appendChild(fragment);
     }
     
@@ -505,9 +541,7 @@ export class UIManager {
         const time = new Date().toLocaleTimeString();
         logElement.className = `log-${logData.type || 'log'}`;
         logElement.dataset.prefix = logData.prefix;
-        
         logElement.textContent = `[${time}] [${logData.prefix}] ${logData.message}\n`;
-        
         if (this.state.focusedBot && this.state.focusedBot !== logData.prefix) {
             logElement.style.display = 'none';
         }
@@ -531,32 +565,36 @@ export class UIManager {
             }
         }
         selector.innerHTML = newBotOptions.join('');
-        if (!targetStillExists) {
-            selector.value = '*';
-        }
+        if (!targetStillExists) selector.value = '*';
     }
 
-    initModalToggles(modal, clearButton, formToReset) {
+    initModalToggles(modal, clearButton, formToReset, onCloseCallback = null) {
         if (modal.showButton) {
             modal.showButton.addEventListener('click', () => {
                 if (formToReset) {
                     formToReset.reset(); 
-                    this.elements.botForm.paramsJson.value = ''; 
+                    if (this.elements.botForm.paramsJson) this.elements.botForm.paramsJson.value = ''; 
+                    if (this.elements.taskModal.paramsJson) this.elements.taskModal.paramsJson.value = '';
                 }
                 modal.overlay.style.display = 'block';
             });
         }
         
-        modal.closeButton.addEventListener('click', () => modal.overlay.style.display = 'none');
+        const closeModal = () => {
+            modal.overlay.style.display = 'none';
+            if (onCloseCallback) onCloseCallback(); 
+        };
         
+        modal.closeButton.addEventListener('click', closeModal);
         modal.overlay.addEventListener('click', (e) => {
-            if (e.target === modal.overlay) modal.overlay.style.display = 'none';
+            if (e.target === modal.overlay) closeModal();
         });
         
-        if (clearButton) {
+        if (clearButton && formToReset) {
             clearButton.addEventListener('click', () => {
                 formToReset.reset();
-                this.elements.botForm.paramsJson.value = ''; 
+                if (this.elements.botForm.paramsJson) this.elements.botForm.paramsJson.value = ''; 
+                if (this.elements.taskModal.paramsJson) this.elements.taskModal.paramsJson.value = '';
             });
         }
     }
@@ -569,30 +607,86 @@ export class UIManager {
         f.port.value = botConfig.port || 25565;
         f.version.value = botConfig.version || '1.20.1';
         f.auth.value = botConfig.auth || 'offline';
-        f.behavior.value = botConfig.behavior || 'idle';
+        f.behavior.value = botConfig.behavior || 'idle'; 
         f.autoReconnect.checked = botConfig.autoReconnect !== false;
-        
         f.paramsJson.value = botConfig.params ? JSON.stringify(botConfig.params, null, 2) : '';
-        
         f.proxyHost.value = botConfig.proxy ? botConfig.proxy.host : '';
         f.proxyPort.value = botConfig.proxy ? botConfig.proxy.port : '';
     }
-}
-
-export function filterLogs(focusedBotName, logsPreElement) {
-    const allLogs = logsPreElement.querySelectorAll('span');
-    let hasVisibleLogs = false;
-    allLogs.forEach(log => {
-        if (!focusedBotName) {
-            log.style.display = 'block';
-            hasVisibleLogs = true;
-        } else {
-            const isVisible = log.dataset.prefix === focusedBotName;
-            log.style.display = isVisible ? 'block' : 'none';
-            if (isVisible) hasVisibleLogs = true;
+    
+    renderTaskQueue(botName, taskQueue, cardElement) {
+        
+        // 1. Bot Kartı Güncellemesi
+        const card = cardElement || this.botElementCache.get(botName);
+        if (card) {
+            const queueDiv = card.querySelector('.bot-task-queue');
+            // Düzeltme: Eğer queueDiv null ise (ki artık olmamalı) hatayı yakala
+            if (!queueDiv) {
+                console.warn(`renderTaskQueue: Bot kartında '.bot-task-queue' div'i bulunamadı. (${botName})`);
+                return; // Fonksiyondan çık
+            }
+            queueDiv.innerHTML = ''; // Temizle
+            if (taskQueue && taskQueue.length > 0) {
+                const title = document.createElement('p');
+                title.className = 'bot-task-queue-title';
+                title.textContent = 'Görev Kuyruğu:';
+                
+                const list = document.createElement('ul');
+                list.className = 'task-queue-list';
+                
+                taskQueue.slice(0, 2).forEach((task, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = `(${index + 1}) ${task.scriptName}`;
+                    if (index === 0) li.className = 'task-status-running'; 
+                    list.appendChild(li);
+                });
+                
+                if (taskQueue.length > 2) {
+                    const li = document.createElement('li');
+                    li.textContent = `...ve ${taskQueue.length - 2} tane daha.`;
+                    list.appendChild(li);
+                }
+                queueDiv.appendChild(title);
+                queueDiv.appendChild(list);
+            }
         }
-    });
-    if (hasVisibleLogs) {
-        logsPreElement.parentElement.scrollTop = logsPreElement.parentElement.scrollHeight;
+        
+        // 2. Modal Güncellemesi (Eğer açıksa)
+        if (this.elements.taskModal.overlay.style.display === 'block' &&
+            this.elements.taskModal.botNameInput.value === botName) {
+                
+            const listDiv = this.elements.taskModal.list;
+            listDiv.innerHTML = ''; 
+            
+            if (!taskQueue || taskQueue.length === 0) {
+                listDiv.innerHTML = '<p>Kuyruk boş.</p>';
+                return;
+            }
+
+            taskQueue.forEach((task, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'task-queue-item';
+                itemDiv.innerHTML = `
+                    <div class="task-info">
+                        <span class="task-name">(${index + 1}) ${task.scriptName}</span>
+                        <span class="task-params">${JSON.stringify(task.params)}</span>
+                    </div>
+                    <div class="task-actions">
+                        <button class="btn-view-log" data-task-id="${task.id}" data-task-index="${index}">Log</button>
+                        <button class="btn-remove-task" data-task-id="${task.id}" title="Sil">X</button>
+                    </div>
+                `;
+                
+                itemDiv.querySelector('.btn-view-log').addEventListener('click', () => {
+                    this.state.requestTaskLogView(botName, task);
+                });
+                itemDiv.querySelector('.btn-remove-task').addEventListener('click', () => {
+                    alert('Görev silme henüz eklenmedi. (TODO: state.emit(action:removeTask))');
+                    // TODO: this.state.requestRemoveTask(botName, task.id);
+                });
+                
+                listDiv.appendChild(itemDiv);
+            });
+        }
     }
 }

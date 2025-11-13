@@ -1,7 +1,8 @@
-// public/js/app.js (v5.0)
+// public/js/app.js (v6.0)
 import { state } from './stateManager.js';
 import { SocketManager } from './socketManager.js';
 import { UIManager } from './uiManager.js';
+// uiUtils.js'ye gerek yok, o uiManager içinde import ediliyor.
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Socket bağlantısını başlat
@@ -15,5 +16,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // DOM event listener'ları (tıklamalar vb.) kendi constructor'ında başlatır.
     const uiManager = new UIManager(state); 
     
-    console.log("GTool v5.0 (Prod-Ready) Başlatıldı.");
+    console.log("GTool v6.0 (Task System) Başlatıldı.");
 });

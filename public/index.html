@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GTool v5.1</title>
+    <title>GTool v6.0 - Task System</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -83,7 +83,9 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="bot-behavior">Davranış (Behavior)</label>
-                        <input type="text" id="bot-behavior" value="idle" placeholder="idle, afk, login...">
+                        <select id="bot-behavior">
+                            <option value="idle">idle</option>
+                            </select>
                     </div>
                     <div class="form-group form-group-checkbox">
                         <input type="checkbox" id="bot-autoReconnect" checked>
@@ -119,6 +121,44 @@
              <h2 id="inventory-modal-title">Bot Envanteri</h2>
              <div id="inventory-grid-container">
                  </div>
+         </div>
+    </div>
+
+    <div id="task-modal-overlay">
+         <div id="task-modal-content">
+             <button id="task-modal-close-button" title="Kapat">&times;</button>
+             <h2 id="task-modal-title">Görev Yöneticisi: [Bot Adı]</h2>
+             
+             <h3>Görev Kuyruğu</h3>
+             <div id="task-queue-list">
+                 <p>Kuyruk boş.</p>
+             </div>
+
+             <h3 class="task-form-title">Yeni Görev Ekle</h3>
+             <form id="add-task-form">
+                 <input type="hidden" id="task-bot-name">
+                 <div class="form-grid">
+                     <div class="form-group">
+                         <label for="task-script-name">Görev Script'i</label>
+                         <select id="task-script-name" required>
+                             <option value="">Script Seçin...</option>
+                             </select>
+                     </div>
+                 </div>
+                 <div class="form-group">
+                    <label for="task-params-json">Görev Parametreleri (JSON)</label>
+                    <textarea id="task-params-json" rows="3" placeholder='{ "block_type": "coal_ore", "count": 10 }'></textarea>
+                 </div>
+                 <button type="submit" id="save-task-button">Görevi Kuyruğa Ekle</button>
+             </form>
+         </div>
+    </div>
+
+    <div id="task-log-modal-overlay">
+         <div id="task-log-modal-content">
+             <button id="task-log-modal-close-button" title="Kapat">&times;</button>
+             <h2 id="task-log-modal-title">Canlı Görev Logu: [Task ID]</h2>
+             <pre id="task-log-output"></pre>
          </div>
     </div>
 

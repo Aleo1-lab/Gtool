@@ -1,14 +1,12 @@
-// bot.js (v5.4)
+// bot.js (v5.4.2 - Lobi & Dosya Adı Düzeltmesi)
 const mineflayer = require('mineflayer');
 const path = require('path');
 const { SocksProxyAgent } = require('socks-proxy-agent');
 
-// GÜNCELLENDİ: v5.4 - Pathfinder'ı DOĞRU import etme
-// Plugin'i, Movements'ı ve Goals'u ana 'require'dan al
 const pathfinder = require('mineflayer-pathfinder');
 const Movements = pathfinder.Movements;
 const Goals = pathfinder.goals;
-const { GoalBlock } = Goals; // <-- HATA BURADA DÜZELTİLDİ
+const { GoalBlock } = Goals; 
 
 let bot;
 let botConfig;
@@ -92,19 +90,34 @@ async function loadBehavior() {
     sendToController('status', `Loading behavior: ${behaviorName}...`);
     
     try {
-        const behaviorPath = path.join(__dirname, 'behaviors', `${behaviorName}.js`);
+        // --- DÜZELTME BURADA (v5.4.2) ---
+        // Eğer behaviorName 'afk' ise 'afk.js' yap,
+        // 'login_example.js' ise 'login_example.js' olarak bırak.
+        const scriptName = behaviorName.endsWith('.js') ? behaviorName : `${behaviorName}.js`;
+        const behaviorPath = path.join(__dirname, 'behaviors', scriptName);
+        // --- DÜZELTME BİTTİ ---
+
         delete require.cache[require.resolve(behaviorPath)];
         const behavior = require(behaviorPath);
         
-        const utils = { GoalBlock };
+        const utils = { 
+            GoalBlock,
+            Goals,
+            Movements 
+        };
         
         sendToController('log', `Behavior '${behaviorName}' executing...`);
         await behavior(bot, sendToController, botConfig.params || {}, utils);
         sendToController('log', `Behavior '${behaviorName}' finished successfully.`);
         
     } catch (err) {
-        sendToController('error', `[BEHAVIOR ERROR] '${behaviorName}' script failed: ${err.message}`);
-        console.error(err); 
+        // Hata mesajını daha net hale getir
+        const errorMessage = (err.code === 'MODULE_NOT_FOUND') 
+            ? `Script dosyası bulunamadı: ${err.message}`
+            : err.message;
+            
+        sendToController('error', `[BEHAVIOR ERROR] '${behaviorName}' script failed: ${errorMessage}`);
+        console.error(err); // Hatanın stack trace'ini node loguna bas
     } finally {
         sendToController('status', 'Behavior execution finished or caught error.');
     }
@@ -138,22 +151,21 @@ function connect() {
 
     bot = mineflayer.createBot(options);
     
-    // GÜNCELLENDİ: v5.4 - Plugin'i 'pathfinder' değişkeniyle yükle
     bot.loadPlugin(pathfinder.pathfinder);
     
-    bot.on('login', () => {
+    bot.on('login', async () => { 
         sendToController('status', 'Connected to server (login event fired).');
         mcData = require('minecraft-data')(bot.version);
         
-        // GÜNCELLENDİ: v5.4 - 'Movements' sınıfını doğru kullan
         const defaultMove = new Movements(bot, mcData);
         bot.pathfinder.setMovements(defaultMove);
+        
+        // Lobi sunucuları için 'spawn'dan önce yüklüyoruz (v5.4.1 Düzeltmesi)
+        await loadBehavior(); 
     });
 
     bot.on('spawn', async () => {
         sendToController('status', 'Bot spawned in world. Starting/Resetting stats reporting.');
-        
-        await loadBehavior(); 
         
         if (statsInterval) clearInterval(statsInterval);
         statsInterval = setInterval(onTick, 3000); 
@@ -171,7 +183,7 @@ function connect() {
 
     bot.on('kicked', (reason, loggedIn) => {
         sendToController('error', `Kicked! Reason: ${JSON.stringify(reason)}`);
-        behaviorLoaded = false;
+        behaviorLoaded = false; 
         if (statsInterval) { clearInterval(statsInterval); statsInterval = null; }
         process.exit(1);
     });
@@ -259,7 +271,7 @@ process.on('message', (message) => {
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  sendToController('error', `[KRİTİK HATA] Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  sendToController('error', `[KRİTİK HATA] Unhandled Rejection at: ${promise}, reason: ${reason.stack || reason}`);
   if (statsInterval) { clearInterval(statsInterval); statsInterval = null; }
   process.exit(1);
 });

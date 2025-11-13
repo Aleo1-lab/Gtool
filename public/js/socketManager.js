@@ -8,7 +8,6 @@ export class SocketManager {
         this.initActionListeners();
     }
 
-    // GÜNCELLENDİ: Düzeltme #5 - Hata Sınırları (Error Boundaries)
     initSocketListeners() {
         this.socket.on('full_state', (bots) => {
             try {
@@ -45,16 +44,32 @@ export class SocketManager {
                 this.state.showConfigForm(botConfig);
             } catch (e) { console.error("Error in 'config_show_bot' handler:", e); }
         });
+        
+        // YENİ: Task Sistemi Dinleyicileri
+        this.socket.on('available_scripts', (scripts) => {
+            // scripts = { behaviors: [...], tasks: [...] }
+            try {
+                this.state.setAvailableScripts(scripts);
+            } catch (e) { console.error("Error in 'available_scripts' handler:", e); }
+        });
+
+        this.socket.on('log_stream', (logData) => {
+            // logData = { taskId, message }
+            try {
+                this.state.handleTaskLogStream(logData);
+            } catch (e) { console.error("Error in 'log_stream' handler:", e); }
+        });
     }
 
-    // GÜNCELLENDİ: Düzeltme #5 - Hata Sınırları (Error Boundaries)
     initActionListeners() {
+        // Config Form
         this.state.on('action:submitForm', (botData) => {
             try {
                 this.socket.emit('config_add_bot', botData);
             } catch (e) { console.error("Error in 'action:submitForm' emitter:", e); }
         });
         
+        // Bot Butonları
         this.state.on('action:botCommand', ({ action, botName }) => {
             try {
                 switch (action) {
@@ -69,16 +84,32 @@ export class SocketManager {
             } catch (e) { console.error("Error in 'action:botCommand' emitter:", e); }
         });
         
+        // Global Komut
         this.state.on('action:globalCommand', ({ target, fullCommand }) => {
             try {
                 this.socket.emit('command_send_global', { target, fullCommand });
             } catch (e) { console.error("Error in 'action:globalCommand' emitter:", e); }
         });
         
+        // Edit Config
         this.state.on('action:getConfig', (botName) => {
             try {
                 this.socket.emit('config_get_bot', botName);
             } catch (e) { console.error("Error in 'action:getConfig' emitter:", e); }
+        });
+        
+        // YENİ: Task Sistemi Eylemleri
+        this.state.on('action:addTask', (taskData) => {
+            try {
+                this.socket.emit('task_add', taskData);
+            } catch (e) { console.error("Error in 'action:addTask' emitter:", e); }
+        });
+
+        this.state.on('action:viewTaskLogs', (logRequest) => {
+            // logRequest = { taskId, join: true/false }
+            try {
+                this.socket.emit('task_view_logs', logRequest);
+            } catch (e) { console.error("Error in 'action:viewTaskLogs' emitter:", e); }
         });
     }
 }
